@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from collections.abc import Iterable
+from collections.abc import Iterable  # NOQA
 import sympy as smp
 from sympy.tensor.array import MutableDenseNDimArray
 import logging
@@ -128,7 +128,7 @@ class DeviceBase(object):
             # substitute singleton with element variables
             _gcall_ext_symbolic[var] = self._subs_all_vectorized(equation_singleton, return_as=smp.Array)
 
-        self._gcall_ext_symbolic =_gcall_ext_symbolic
+        self._gcall_ext_symbolic = _gcall_ext_symbolic
 
     def make_gcall_int_symbolic(self):
         """Generate `self._gcall_int_symbolic` from `self._gcall_int`
@@ -383,7 +383,7 @@ class DeviceBase(object):
             assert len(self._algeb_ext) == len(self._gcall_ext), "{} Number of _algeb_ext does not equal " \
                                                                  "_gcall_ext".format(self.__class__.__name__)
         assert len(self._algeb_int) - len(self._algeb_intf) <= \
-               len(self._gcall_int), "{} Too few gcall_int equations".format(self.__class__.__name__)
+            len(self._gcall_int), "{} Too few gcall_int equations".format(self.__class__.__name__)
 
     def metadata_check(self):
         """Check the metadata and find inconsistency
@@ -510,8 +510,7 @@ class DeviceBase(object):
 
 class DeviceData(object):
     """Class for storing device data"""
-    def __init__(self, device: str, param : list, n_element=0):
+    def __init__(self, device: str, param: list, n_element=0):
         self.device = device  # name of the device to which the data belongs
         for item in param:
             self.__dict__[item] = np.ndarray((n_element, ))
-

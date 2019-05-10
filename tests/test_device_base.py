@@ -36,7 +36,3 @@ class TestDeviceBase(unittest.TestCase):
         self.test_device._init_data()
 
         self.assertEqual(self.system.bus.n, 10)
-
-
-
-

@@ -1,5 +1,5 @@
 import numpy as np
-import sympy as smp
+import sympy as smp  # NOQA
 from dian.system import System
 import logging
 

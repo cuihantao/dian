@@ -1,5 +1,5 @@
 import numpy as np
-import sympy as smp
+import sympy as smp  # NOQA
 from typing import Iterable
 from collections import OrderedDict
 
@@ -79,6 +79,3 @@ class DAE(object):
 
         self.y = [0] * self.m
         self.g = [0] * self.m
-
-
-

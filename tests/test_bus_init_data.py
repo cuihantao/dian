@@ -23,5 +23,3 @@ class TestInitData(unittest.TestCase):
         self.system.bus._init_equation()
         self.system.bus.get_var_address()
         self.system.pq.get_algeb_ext()
-
-

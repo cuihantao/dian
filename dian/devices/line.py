@@ -63,7 +63,7 @@ class Line(DeviceBase):
             if (a1, a2) not in dok_y.keys():
                 dok_y[(a1, a2)] = -y12 / mconj
             else:
-                dok_y[(a1, a2)] = dok_y[(a1, a2)] -y12 / mconj
+                dok_y[(a1, a2)] = dok_y[(a1, a2)] - y12 / mconj
         for a1, a2, y12, m in zip(a1_addr, a2_addr, self.y12, self.m):
             if (a2, a1) not in dok_y.keys():
                 dok_y[(a2, a1)] = - y12 / m

@@ -52,8 +52,5 @@ class System(object):
                 for idx, addr in enumerate(dae_addr_var):
                     self.dae.g[addr] = self.dae.g[addr] + gcall_syms[variable][idx]
 
-
-
-
     def collect_algeb_variables(self):
         pass

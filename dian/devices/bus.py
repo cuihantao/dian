@@ -1,6 +1,6 @@
-from collections import OrderedDict
-import sympy as smp
-import numpy as np
+from collections import OrderedDict  # NOQA
+import sympy as smp  # NOQA
+import numpy as np  # NOQA
 
 from .devicebase import DeviceBase
 
@@ -44,8 +44,6 @@ class Bus(DeviceBase):
 
         # TODO: check the number of equations equal the number of n_algeb - n_algeb_intf
 
-
-
-"""
-How to define the hierarchy of devices
-"""
+        """
+        How to define the hierarchy of devices
+        """
