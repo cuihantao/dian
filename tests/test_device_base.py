@@ -19,8 +19,8 @@ class TestDeviceBase(unittest.TestCase):
         self.test_device = self.system.testdevice
 
         # create buses
-        self.system.bus.n_elements_with_default_mapping(10)
-        self.test_device.n_elements_with_default_mapping(5)
+        self.system.bus.create_n_default_elements(10)
+        self.test_device.create_n_default_elements(5)
 
         # link TestDevice to buses
         self.test_device.bus = np.array([0, 2, 4])

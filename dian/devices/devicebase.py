@@ -16,6 +16,11 @@ class DeviceBase(object):
     """
     Base class for devices with universal properties and functions
 
+    # TODO: before sympifying, use self.n to define array symbols
+    # TODO: provide an option to populate default data when the number of devices are given
+
+    #  {Constant, Symbol {scalar, vector {parameter, variable{internal, external}, matrix}, Anything}
+
     """
     def __init__(self, system):
 
@@ -24,6 +29,10 @@ class DeviceBase(object):
 
         # options for the whole class
         self._options = OrderedDict()
+
+        # parameter data loaded from data files or data classes
+
+        self._param_data = OrderedDict()
 
         # default set of parameters
         self._param_int = ['name', 'u']
@@ -103,48 +112,89 @@ class DeviceBase(object):
         # dae address for variable and equations
         self._dae_address = OrderedDict()
 
-    def load_param_from_dataframe(self):
+    def make_gcall_ext_symbolic(self):
         """
-        load parameters of multiple elements from a pandas dataframe
+        Generate symbolic expressions for algebraic equations, based on `self._gcall_ext`, linked to external
+        algebraic variables
 
         Returns
         -------
         None
-
         """
-        pass
-
-    def make_gcall_ext_symbolic(self):
-        """Generate `self._gcall_ext_symbolic` from `self._gcall_ext`
-        """
-        # temporary OrderedDict
-        _gcall_ext_symbolic = OrderedDict()
 
         for var, eq in self._gcall_ext.items():
-            # convert equation singleton
             equation_singleton = smp.sympify(eq)
             self._gcall_ext_symbolic_singleton[var] = equation_singleton
 
-            # substitute singleton with element variables
-            _gcall_ext_symbolic[var] = self._subs_all_vectorized(equation_singleton, return_as=smp.Array)
-
-        self._gcall_ext_symbolic = _gcall_ext_symbolic
-
     def make_gcall_int_symbolic(self):
-        """Generate `self._gcall_int_symbolic` from `self._gcall_int`
         """
-        # temporary OrderedDict
-        _gcall_int_symbolic = OrderedDict()
+        Generate symbolic expressions for algebraic equations, based on `self._gcall_ext`, linked to internal
+        variables
+
+        Returns
+        -------
+        None
+        """
 
         for var, eq in self._gcall_int.items():
             # convert equation singleton
             equation_singleton = smp.sympify(eq)
             self._gcall_int_symbolic_singleton[var] = equation_singleton
 
-            # substitute singleton with element variables
-            _gcall_int_symbolic[var] = self._subs_all_vectorized(equation_singleton, return_as=smp.Array)
+    def delayed_symbol_sub(self, in_dict_name: str, out_dict_name: str, subs_type='vectorized', output_type=None,
+                           update=False):
+        """
+        Execute symbolic substitution for a dictionary whose values are symbolic equation singletons
 
-        self._gcall_int_symbolic = _gcall_int_symbolic
+        Parameters
+        ----------
+        in_dict_name : str
+            The name of the dictionary which is a member of this instance with the keys as the equation names
+            and values as the symbolic equation singletons
+
+        out_dict_name : str
+            The name of a dictionary to which the equations with substituted symbols will be stored
+
+        subs_type : str
+            The type of the substitution in `('vectorized', 'singleton')`
+
+        output_type : Type
+            The type of the returned vectorized substitution for each equation. Can be returned as a list or
+            a sympy.Arrray
+
+        update : bool
+            Update the value if the key already exists in the output dictionary
+
+        Returns
+        -------
+        None
+        """
+        assert subs_type in ('vectorized', 'singleton')
+
+        singleton_dict = self.__dict__[in_dict_name]
+        for var, eq in singleton_dict.items():
+            if not update and var in self.__dict__[out_dict_name]:
+                continue
+
+            if subs_type == 'vectorized':
+                self.__dict__[out_dict_name][var] = self._subs_all_vectorized(eq, return_as=output_type)
+            elif subs_type == 'singleton':
+                self.__dict__[out_dict_name][var] = self._subs_all_singleton(eq, return_as=output_type)
+
+    def delayed_symbol_sub_all(self):
+        """
+        Delayed substitution for symbols. May need to call `self._subs_all_vectorized` and
+        `self._subs_all_singleton` respectively for each devices
+
+        Returns
+        -------
+        None
+
+        """
+        self.delayed_symbol_sub(in_dict_name='_gcall_ext_symbolic_singleton', out_dict_name='_gcall_ext_symbolic',
+                                subs_type='vectorized', output_type=smp.Array)
+        self.delayed_symbol_sub(in_dict_name='_gcall_int_symbolic_singleton', out_dict_name='_gcall_int_symbolic',
+                                subs_type='vectorized', output_type=smp.Array)
 
     def _subs_all_vectorized(self, equation_singleton, return_as=list):
         """Substitute symbol singletons with element-wise variable names for the provided expression"""
@@ -168,7 +218,9 @@ class DeviceBase(object):
             ret[i] = equation_singleton.subs(sym_list)
 
         # process return type
-        if return_as is list:
+        if return_as is None:
+            pass
+        elif return_as is list:
             pass
         else:
             ret = return_as(ret)
@@ -195,29 +247,13 @@ class DeviceBase(object):
             ret = return_as(ret)
         return ret
 
-    def _convert_dict_val_to_Array(self, data):
-        """Take an OrderedDict and covert the items from lists to sympy Arrays"""
-        for key in data.keys():
-            data[key] = smp.Array(data[key])
-        return data
-
-    def _convert_list_to_Array(self, data):
-        """Take a list and covert it to a sympy Array"""
-        return smp.Array(data)
-
-    def load_param_by_row(self, **kwargs):
+    def _init_data(self):
         """
-        Load parameters of a single element (row) from parameter values
+        Initialize data members based on metadata provided in `__init__()`
+
         Returns
         -------
 
-        """
-        # for key, val in kwargs.items():
-        #     if key not in
-        pass
-
-    def _init_data(self):
-        """Initialize class based on metadata provided in `__init__()`
         """
         # TODO: check for name conflicts
 
@@ -281,12 +317,18 @@ class DeviceBase(object):
                 # TODO: register for a variable number in the DAE system
                 logger.debug(self.__dict__[item])
 
-    def get_foreign_param(self, update=False):
-
-        pass
-
     def get_algeb_ext(self):
+        """
+        Based on the definition of algebraic variables (defined in `self._algeb_ext` and the associated device,
+        retrieve the
+         - variable symbol singleton (goes to self._symbol_singleton[dest])
+         - the variable list for the respective external elements (goes to `self.{dest}` as a sympy.Array)
+         - the variable address in the dae (goes to `self._dae_address[f'{dest'}]`)
 
+        Returns
+        -------
+        None
+        """
         if len(self._algeb_ext) > 0:
             logger.debug(f'{self.__class__.__name__} External algebraic variables of device')
 
@@ -294,68 +336,90 @@ class DeviceBase(object):
 
                 if fkey in self._param_int:  # if fkey is a valid parameter input
                     dev = self._foreign_keys[fkey]
-                    int_keys = self._get_int_of_foreign_element(dev, fkey)
+                    int_keys = self._get_int_of_element(dev, fkey)
                 else:  # fkey is a device name instead
                     dev = fkey
                     fkey_values = self.system.__dict__[fkey.lower()].idx
                     int_keys = self.system.__dict__[dev.lower()].idx2int(fkey_values)
 
-                # store indices of this to `{dest}_idx`
+                # store dae address
                 dev_ref = self.system.__dict__[dev.lower()]
-                self.__dict__[f'_{dest}_addr'] = dev_ref._dae_address[f'{var_name}'][int_keys]  #
-                # deprecated
                 self._dae_address[f'{dest}'] = dev_ref._dae_address[f'{var_name}'][int_keys]
 
-                # get external algebraic VARIABLES by accessing
+                # get external algebraic variable symbol array by accessing
                 algeb_symbol_list = self.get_list_of_symbols_from_ext(dev, var_name, int_keys)
                 self.__dict__[dest] = smp.Array(algeb_symbol_list)
+
+                # store the singleton  TODO: should be retrieved
                 self._symbol_singleton[dest] = smp.symbols(var_name)
                 logger.debug(self.__dict__[dest])
 
-    def _get_int_of_foreign_element(self, dev, fkey):
+    def _get_int_of_element(self, dev, fkey):
+        """
+        For device `dev`, get the internal indicex (int) of the elements having `fkey` matching their `idx`
+
+        Parameters
+        ----------
+        dev : str
+            Name of the device
+        fkey :
+            A list or numpy array as foreign keys indexing into `dev.idx`
+
+        Returns
+        -------
+
+        """
         assert dev in self._foreign_keys.values()
 
         fkey_values = self.__dict__[fkey]
         return self.system.__dict__[dev.lower()].idx2int(fkey_values)
 
-    def get_list_of_symbols_from_ext(self, dev, var_name, int):
+    def get_list_of_symbols_from_ext(self, dev, var_name, int_idx):
         """
         Get a list of symbols from external devices based on the fkey linked to the idx of external devices
 
         Parameters
         ----------
-        dev
+        dev : str
+            Name of the device
 
-        fkey
+        var_name : str
+            Name of the variable of the device to access
+
+        int_idx
+            A list or numpy array of the internal indices of the elements to access
 
         Returns
         -------
 
         """
         dev = dev.lower()
-        if isinstance(int, np.ndarray):
-            int = int.tolist()
-        return [self.system.__dict__[dev].__dict__[var_name][i] for i in int]
+        if isinstance(int_idx, np.ndarray):
+            int_idx = int_idx.tolist()  # sympy is not aware of numpy.int64; convert to a list of floats
+        return [self.system.__dict__[dev].__dict__[var_name][i] for i in int_idx]
 
     def idx2int(self, idx):
         """
-        Convert external indicex `idx` to internal indices
+        Convert external indices `idx` to internal indices as stored in `self.int`
+
         Returns
         -------
-
+        np.ndarray : an array of internal indices
         """
         return np.array([self._int[i] for i in idx])
 
-    def n_elements_with_default_mapping(self, n: int):
+    def create_n_default_elements(self, n: int):
         """
-        Set the number of elements to n with default {i:i} mapping where i in range(n)
+        Create `n` elements with the default N-to-N mapping between int and idx. The `idx` and `int` are both
+        in range(n).
+
         Parameters
         ----------
         n : int
             The number of elements to add
         Returns
         -------
-
+        None
         """
 
         assert n >= 0
@@ -364,11 +428,14 @@ class DeviceBase(object):
 
     def _init_equation(self):
         """
-        Create storage arrays for equations
+        Create storage arrays for equations. The equation name starts with an underscore `_` followed by the
+        variable name.
+
+        Included equations are defined in `self._algeb_int`, `self._algeb_intf`, and `self._state_int`.
 
         Returns
         -------
-
+        None
         """
         for item in (self._algeb_int + self._algeb_intf + self._state_int):
             eq_name = f'_{item}'  # equation names starts with "_" and follows with the corresponding var name
@@ -376,8 +443,12 @@ class DeviceBase(object):
             logger.debug(self.__dict__[eq_name])
 
     def _check_number_of_algeb_equations(self):
-        """Check the number of algebraic equations so that n_algeb = n_algeb_equations
+        """
+        Consistency check subroutine: check if the number of equations equal the number of variables.
 
+        Returns
+        -------
+        None
         """
         if self._special_flags['no_algeb_ext_check'] is False:
             assert len(self._algeb_ext) == len(self._gcall_ext), "{} Number of _algeb_ext does not equal " \
@@ -386,16 +457,22 @@ class DeviceBase(object):
             len(self._gcall_int), "{} Too few gcall_int equations".format(self.__class__.__name__)
 
     def metadata_check(self):
-        """Check the metadata and find inconsistency
+        """
+        Check the metadata and find inconsistency. Contains of subroutines for consistency check.
+
+        Returns
+        -------
+        None
         """
         self._check_number_of_algeb_equations()
 
     def _compute_param_int(self):
         """
-        Compute internal parameters based on `self._param_int_computed`
+        Compute internal parameters based on `self._param_int_computed`.
+
         Returns
         -------
-
+        None
         """
         # process internally computed parameters
 
@@ -403,15 +480,20 @@ class DeviceBase(object):
             logger.debug(f'{self.__class__.__name__} Param computed: ')
             for var, eq in self._param_int_computed.items():
                 equation_singleton = smp.sympify(eq)
+                # may not need to delay subs here
                 self.__dict__[var] = self._subs_all_vectorized(equation_singleton)
                 logger.debug(self.__dict__[var])
 
     def _compute_variable(self):
         """
-        Compute variables as defined in `self._var_int_computed`
+        Compute internal variable symbols as defined in `self._var_int_computed`. Supports a list of
+         - [equation]
+         - [equation, compute_type]
+         - [equation, compute_type, return_type]
 
         Returns
         -------
+        None
 
         """
         if len(self._var_int_computed) > 0:
@@ -419,10 +501,6 @@ class DeviceBase(object):
             for var, eq in self._var_int_computed.items():
                 compute_type = 'vectorized'
                 return_type = None
-                # support a list of
-                # a) [equation]
-                # b) [equation, compute_type]
-                # c) [equation, compute_type, return_type]
                 if isinstance(eq, list):
                     if len(eq) == 3:
                         eq, compute_type, return_type = eq
@@ -451,10 +529,11 @@ class DeviceBase(object):
 
     def _compute_variable_custom(self):
         """
+        Hook functions to compute custom variables. To be overloaded by devices.
 
         Returns
         -------
-
+        None
         """
         pass
 
@@ -489,7 +568,13 @@ class DeviceBase(object):
         return len(self.idx)
 
     def get_var_address(self):
-        """Request address for variables in global DAE
+        """
+        Request address for variables in global DAE. Stored in `self._dae_address` with the variable name as
+        keys and address array as the values.
+
+        Returns
+        -------
+        None
         """
 
         # state variables
@@ -507,6 +592,36 @@ class DeviceBase(object):
             self.__dict__[f'_{key}_addr'] = val
         self._dae_address.update(ret)
 
+    def is_state(self, var_name):
+        """
+        Check if a variable `var_name` is a state variable.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of the variable
+
+        Returns
+        -------
+        bool : True if is a state variable. False otherwise.
+        """
+        pass
+
+    def is_algeb(self, var_name):
+        """
+        Check if a variable `var_name` is an algebraic variable.
+
+        Parameters
+        ----------
+        var_name : str
+            Name of the variable
+
+        Returns
+        -------
+        bool : True if is an algebraic variable. False otherwise.
+        """
+        pass
+
 
 class DeviceData(object):
     """Class for storing device data"""
@@ -514,3 +629,25 @@ class DeviceData(object):
         self.device = device  # name of the device to which the data belongs
         for item in param:
             self.__dict__[item] = np.ndarray((n_element, ))
+
+    def load_param_by_row(self, **kwargs):
+        """
+        Load parameters of a single element (row) from parameter values
+        Returns
+        -------
+
+        """
+        # for key, val in kwargs.items():
+        #     if key not in
+        pass
+
+    def load_param_from_dataframe(self):
+        """
+        load parameters of multiple elements from a pandas.DataFrame
+
+        Returns
+        -------
+        None
+
+        """
+        pass

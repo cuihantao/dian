@@ -13,9 +13,9 @@ class TestInitData(unittest.TestCase):
         logger.setLevel(logging.DEBUG)
 
         self.system = System()
-        self.system.bus.n_elements_with_default_mapping(10)
+        self.system.bus.create_n_default_elements(10)
 
-        self.system.pq.n_elements_with_default_mapping(5)
+        self.system.pq.create_n_default_elements(5)
         self.system.pq.bus = np.array([0, 2, 4, 6, 8])
 
     def test_init_data(self):

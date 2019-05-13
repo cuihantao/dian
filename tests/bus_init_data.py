@@ -8,11 +8,11 @@ logger.setLevel(logging.DEBUG)
 
 system = System()
 
-system.bus.n_elements_with_default_mapping(14)
-system.pq.n_elements_with_default_mapping(8)
-system.line.n_elements_with_default_mapping(18)
-system.pv.n_elements_with_default_mapping(1)
-system.shunt.n_elements_with_default_mapping(1)
+system.bus.create_n_default_elements(14)
+system.pq.create_n_default_elements(8)
+system.line.create_n_default_elements(18)
+system.pv.create_n_default_elements(1)
+system.shunt.create_n_default_elements(1)
 
 system.pq.bus = np.array([0, 2, 4, 6, 8])
 system.pv.bus = np.array([0])
