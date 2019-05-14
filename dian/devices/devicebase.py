@@ -229,7 +229,7 @@ class DeviceBase(object):
                 sym = str(symbol)
 
                 if len(self.__dict__[sym]) == 0:
-                    logger.debug(f'_subs_all skips variable {sym} due to empty length')
+                    logger.debug(f'_subs_all_vectorized(): skips variable {sym} due to empty length')
                     continue
                 sym_list.append((symbol, self.__dict__[sym][i]))
 
@@ -277,11 +277,11 @@ class DeviceBase(object):
 
         if self.n == 0:
             return False
-
+        logger.debug(f'--> {self.__class__.__name__}: Entering _init_data()')
         # all computational parameters
         param_int_computational = (set(self._param_int) - set(self._param_int_non_computational))
         if len(param_int_computational) > 0:
-            logger.debug(f'{self.__class__.__name__} Param internal computational: ')
+            logger.debug('Param internal computational: ')
             for item in param_int_computational:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
@@ -290,7 +290,7 @@ class DeviceBase(object):
 
         # create placeholders for computed internal parameters
         if len(self._param_int_computed) > 0:
-            logger.debug(f'{self.__class__.__name__} Param computed place holder: ')
+            logger.debug('Param int computed place holder:')
             for item in self._param_int_computed.keys():
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
@@ -299,7 +299,7 @@ class DeviceBase(object):
 
         # create placeholder in `self.__dict__` for custom computed parameters
         if len(self._param_int_custom) > 0:
-            logger.debug(f'{self.__class__.__name__} Param custom place holder: ')
+            logger.debug('Param custom place holder: ')
             for item in self._param_int_custom:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
@@ -308,7 +308,7 @@ class DeviceBase(object):
 
         # _algeb_int
         if len(self._algeb_int):
-            logger.debug(f'{self.__class__.__name__} Internal algeb variables:')
+            logger.debug('Internal algeb variables:')
             for item in self._algeb_int:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
@@ -318,7 +318,7 @@ class DeviceBase(object):
 
         # internal variabled computed
         if len(self._var_int_computed):
-            logger.debug(f'{self.__class__.__name__} Algebraic variables computed:')
+            logger.debug('Internal variables computed:')
             for item in self._var_int_computed:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
@@ -327,7 +327,7 @@ class DeviceBase(object):
 
         # _state_int
         if len(self._state_int):
-            logger.debug(f'{self.__class__.__name__} Internal state variables:')
+            logger.debug('Internal state variables:')
             for item in self._state_int:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
@@ -347,30 +347,32 @@ class DeviceBase(object):
         -------
         None
         """
-        if len(self._algeb_ext) > 0:
-            logger.debug(f'{self.__class__.__name__} External algebraic variables of device')
+        if len(self._algeb_ext) == 0:
+            return
+        logger.debug(f'--> {self.__class__.__name__}: Entering get_algeb_ext()')
 
-            for dest, (fkey, var_name) in self._algeb_ext.items():
+        for dest, (fkey, var_name) in self._algeb_ext.items():
 
-                if fkey in self._param_int:  # if fkey is a valid parameter input
-                    dev = self._foreign_keys[fkey]
-                    int_keys = self._get_int_of_element(dev, fkey)
-                else:  # fkey is a device name instead
-                    dev = fkey
-                    fkey_values = self.system.__dict__[fkey.lower()].idx
-                    int_keys = self.system.__dict__[dev.lower()].idx2int(fkey_values)
+            if fkey in self._param_int:  # if fkey is a valid parameter input
+                dev = self._foreign_keys[fkey]
+                int_keys = self._get_int_of_element(dev, fkey)
+            else:  # fkey is a device name instead
+                dev = fkey
+                fkey_values = self.system.__dict__[fkey.lower()].idx
+                int_keys = self.system.__dict__[dev.lower()].idx2int(fkey_values)
 
-                # store dae address
-                dev_ref = self.system.__dict__[dev.lower()]
-                self._dae_address[f'{dest}'] = dev_ref._dae_address[f'{var_name}'][int_keys]
+            # store dae address
+            dev_ref = self.system.__dict__[dev.lower()]
+            self._dae_address[f'{dest}'] = dev_ref._dae_address[f'{var_name}'][int_keys]
 
-                # get external algebraic variable symbol array by accessing
-                algeb_symbol_list = self.get_list_of_symbols_from_ext(dev, var_name, int_keys)
-                self.__dict__[dest] = smp.Array(algeb_symbol_list)
+            # get external algebraic variable symbol array by accessing
+            algeb_symbol_list = self.get_list_of_symbols_from_ext(dev, var_name, int_keys)
+            self.__dict__[dest] = smp.Array(algeb_symbol_list)
 
-                # store the singleton  TODO: should be retrieved
-                self._symbol_singleton[dest] = smp.symbols(var_name)
-                logger.debug(self.__dict__[dest])
+            # store the singleton  TODO: should be retrieved
+            # self._symbol_singleton[dest] = smp.symbols(var_name)
+            self._symbol_singleton[dest] = dev_ref._symbol_singleton[var_name]
+            logger.debug(self.__dict__[dest])
 
     def _get_int_of_element(self, dev, fkey):
         """
@@ -455,6 +457,11 @@ class DeviceBase(object):
         -------
         None
         """
+        algeb_state_list = self._algeb_int + self._algeb_intf + self._state_int
+        if len(algeb_state_list) == 0:
+            return
+        logger.debug(f'--> {self.__class__.__name__}: Entering _init_equation()')
+
         for item in (self._algeb_int + self._algeb_intf + self._state_int):
             eq_name = f'_{item}'  # equation names starts with "_" and follows with the corresponding var name
             self.__dict__[eq_name] = MutableDenseNDimArray([0] * self.n)
@@ -494,13 +501,14 @@ class DeviceBase(object):
         """
         # process internally computed parameters
 
-        if len(self._param_int_computed) > 0:
-            logger.debug(f'{self.__class__.__name__} Param computed: ')
-            for var, eq in self._param_int_computed.items():
-                equation_singleton = smp.sympify(eq)
-                # may not need to delay subs here
-                self.__dict__[var] = self._subs_all_vectorized(equation_singleton)
-                logger.debug(self.__dict__[var])
+        if len(self._param_int_computed) == 0:
+            return
+        logger.debug(f'--> {self.__class__.__name__}: Entering compute_param_int():')
+        for var, eq in self._param_int_computed.items():
+            equation_singleton = smp.sympify(eq)
+            # may not need to delay subs here
+            self.__dict__[var] = self._subs_all_vectorized(equation_singleton)
+            logger.debug(self.__dict__[var])
 
     def _compute_variable(self):
         """
@@ -514,36 +522,38 @@ class DeviceBase(object):
         None
 
         """
-        if len(self._var_int_computed) > 0:
-            logger.debug(f'{self.__class__.__name__} Variables computed: ')
-            for var, eq in self._var_int_computed.items():
-                compute_type = 'vectorized'
-                return_type = None
-                if isinstance(eq, list):
-                    if len(eq) == 3:
-                        eq, compute_type, return_type = eq
-                    elif len(eq) == 2:
-                        eq, compute_type = eq
-                    elif len(eq) == 1:
-                        eq = eq[0]
-                    else:
-                        raise NotImplementedError
+        if len(self._var_int_computed) == 0:
+            return
+
+        logger.debug(f'--> {self.__class__.__name__}: Entering _compute_variable(): ')
+        for var, eq in self._var_int_computed.items():
+            compute_type = 'vectorized'
+            return_type = None
+            if isinstance(eq, list):
+                if len(eq) == 3:
+                    eq, compute_type, return_type = eq
+                elif len(eq) == 2:
+                    eq, compute_type = eq
+                elif len(eq) == 1:
+                    eq = eq[0]
                 else:
                     raise NotImplementedError
+            else:
+                raise NotImplementedError
 
-                equation_singleton = non_commutative_sympify(eq)
+            equation_singleton = non_commutative_sympify(eq)
 
-                # process compute_type
-                if compute_type == 'vectorized':
-                    self.__dict__[var] = self._subs_all_vectorized(equation_singleton, return_as=smp.Array)
-                elif compute_type == 'singleton':
-                    self.__dict__[var] = self._subs_all_singleton(equation_singleton)
-                else:
-                    raise NotImplementedError
+            # process compute_type
+            if compute_type == 'vectorized':
+                self.__dict__[var] = self._subs_all_vectorized(equation_singleton, return_as=smp.Array)
+            elif compute_type == 'singleton':
+                self.__dict__[var] = self._subs_all_singleton(equation_singleton)
+            else:
+                raise NotImplementedError
 
-                if return_type is not None:
-                    self.__dict__[var] = return_type(self.__dict__[var])
-                logger.debug(self.__dict__[var])
+            if return_type is not None:
+                self.__dict__[var] = return_type(self.__dict__[var])
+            logger.debug(self.__dict__[var])
 
     def _compute_variable_custom(self):
         """
