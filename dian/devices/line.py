@@ -56,6 +56,8 @@ class Line(DeviceBase):
         dok_y = dict()
         a1_addr = self._dae_address['a1']
         a2_addr = self._dae_address['a2']
+
+        # pylint: disable=maybe-no-member
         for a1, y1, m2, y12 in zip(a1_addr, self.y1, self.m2, self.y12):
             dok_y[(a1, a1)] = (y1 + y12) / m2
 

@@ -112,6 +112,24 @@ class DeviceBase(object):
         # dae address for variable and equations
         self._dae_address = OrderedDict()
 
+    def _init_symbolic_singleton(self):
+        """
+        Create symbol singletons in the first place for parameters and variables
+
+        Dictionaries:
+         - _gcall_int
+         - _fcall_int
+         - _var_int_computed
+         - _var_int_custom
+        Lists:
+         - _param_int
+
+        Returns
+        -------
+        None
+        """
+        # dicts = ['_gcall_int', '_fcall_int', '_param_int_computed', ]
+
     def make_gcall_ext_symbolic(self):
         """
         Generate symbolic expressions for algebraic equations, based on `self._gcall_ext`, linked to external
