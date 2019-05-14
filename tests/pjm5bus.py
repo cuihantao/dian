@@ -25,6 +25,11 @@ system.pq.metadata_check()
 system.line.metadata_check()
 system.pv.metadata_check()
 
+system.bus._init_symbols()
+system.pq._init_symbols()
+system.line._init_symbols()
+system.pv._init_symbols()
+
 system.bus._init_data()
 system.pq._init_data()
 system.line._init_data()

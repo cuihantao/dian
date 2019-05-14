@@ -1,9 +1,10 @@
-from collections import OrderedDict
-from collections.abc import Iterable  # NOQA
 import sympy as smp
-from sympy.tensor.array import MutableDenseNDimArray
-import logging
 import numpy as np
+import logging
+import pprint
+
+from collections import OrderedDict
+from sympy.tensor.array import MutableDenseNDimArray
 from dian.utils import non_commutative_sympify
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,11 @@ class DeviceBase(object):
         self._gcall_int_symbolic_singleton = OrderedDict()
         self._gcall_int_symbolic = OrderedDict()
 
+        # internal fcall equations
+        self._fcall_int = OrderedDict()
+        self._fcall_int_symbolic_singleton = OrderedDict()
+        self._fcall_int_symbolic = OrderedDict()
+
         # special flags
         self._special_flags = {'no_algeb_ext_check': False,
                                'state_group_by_element': True,
@@ -112,7 +118,7 @@ class DeviceBase(object):
         # dae address for variable and equations
         self._dae_address = OrderedDict()
 
-    def _init_symbolic_singleton(self):
+    def _init_symbols(self, init_type='symbol'):
         """
         Create symbol singletons in the first place for parameters and variables
 
@@ -128,7 +134,47 @@ class DeviceBase(object):
         -------
         None
         """
-        # dicts = ['_gcall_int', '_fcall_int', '_param_int_computed', ]
+        assert init_type in ('symbol', 'array')
+
+        meta_lists = ['_param_int', '_algeb_int', '_state_int', '_algeb_ext', '_param_ext']
+
+        meta_dicts = ['_gcall_int', '_fcall_int', '_param_int_computed', '_var_int_computed']
+
+        with_types = ['_var_int_custom']
+
+        for item in meta_lists:
+            for symbol_str in self.__dict__[item]:
+                if symbol_str in self._symbol_singleton:
+                    continue
+                if init_type == 'symbol':
+                    self._symbol_singleton[symbol_str] = smp.symbols(symbol_str)
+                elif init_type == 'array':
+                    self._symbol_singleton[symbol_str] = smp.MatrixSymbol(symbol_str, self.n, 1)
+
+        for item in meta_dicts:
+            for symbol_str in self.__dict__[item].keys():
+                if symbol_str in self._symbol_singleton:
+                    continue
+                if init_type == 'symbol':
+                    self._symbol_singleton[symbol_str] = smp.symbols(symbol_str)
+                elif init_type == 'array':
+                    self._symbol_singleton[symbol_str] = smp.MatrixSymbol(symbol_str, self.n, 1)
+
+        for item in with_types:
+            for symbol_str in self.__dict__[item].keys():
+                if symbol_str in self._symbol_singleton:
+                    continue
+                if init_type == 'symbol':
+                    self._symbol_singleton[symbol_str] = smp.symbols(symbol_str, commutative=False)
+                elif init_type == 'array':
+                    # TODO: this is to be implemented. The matrix size of the custom variable need to be
+                    #  specifiable by the device definition
+                    # raise NotImplementedError
+                    pass
+                    # self._symbol_singleton[symbol_str] = smp.MatrixSymbol(symbol_str,)
+
+        logger.debug(f'--> {self.__class__.__name__}: Initialized symbols: '
+                     f'{pprint.pformat(self._symbol_singleton)}')
 
     def make_gcall_ext_symbolic(self):
         """
@@ -141,7 +187,7 @@ class DeviceBase(object):
         """
 
         for var, eq in self._gcall_ext.items():
-            equation_singleton = smp.sympify(eq)
+            equation_singleton = smp.sympify(eq, locals=self._symbol_singleton)
             self._gcall_ext_symbolic_singleton[var] = equation_singleton
 
     def make_gcall_int_symbolic(self):
@@ -155,8 +201,9 @@ class DeviceBase(object):
         """
 
         for var, eq in self._gcall_int.items():
+            logger.debug(eq)
             # convert equation singleton
-            equation_singleton = smp.sympify(eq)
+            equation_singleton = smp.sympify(eq, locals=self._symbol_singleton)
             self._gcall_int_symbolic_singleton[var] = equation_singleton
 
     def delayed_symbol_sub(self, in_dict_name: str, out_dict_name: str, subs_type='vectorized', output_type=None,
@@ -233,6 +280,9 @@ class DeviceBase(object):
                     continue
                 sym_list.append((symbol, self.__dict__[sym][i]))
 
+            # BUG: the `subs` below will convert the new substitute to the same type of the old one
+            #   E.g., if we are substuting Bus_v_0 (symbol) for v (MatrixSymbol), then Bus_v_0 will be converted
+            #   to a MatrixSymbol, which cannot be added to the DAE
             ret[i] = equation_singleton.subs(sym_list)
 
         # process return type
@@ -285,7 +335,7 @@ class DeviceBase(object):
             for item in param_int_computational:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
-                self._symbol_singleton[item] = smp.symbols(item)
+                # self._symbol_singleton[item] = smp.symbols(item)
                 logger.debug(self.__dict__[item])
 
         # create placeholders for computed internal parameters
@@ -294,7 +344,7 @@ class DeviceBase(object):
             for item in self._param_int_computed.keys():
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
-                self._symbol_singleton[item] = smp.symbols(item)
+                # self._symbol_singleton[item] = smp.symbols(item)
                 logger.debug(self.__dict__[item])
 
         # create placeholder in `self.__dict__` for custom computed parameters
@@ -303,7 +353,7 @@ class DeviceBase(object):
             for item in self._param_int_custom:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
-                self._symbol_singleton[item] = smp.symbols(item)
+                # self._symbol_singleton[item] = smp.symbols(item)
                 logger.debug(self.__dict__[item])
 
         # _algeb_int
@@ -312,8 +362,7 @@ class DeviceBase(object):
             for item in self._algeb_int:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
-                self._symbol_singleton[item] = smp.symbols(item)
-                # TODO: register for a variable number in the DAE system
+                # self._symbol_singleton[item] = smp.symbols(item)
                 logger.debug(self.__dict__[item])
 
         # internal variabled computed
@@ -322,7 +371,7 @@ class DeviceBase(object):
             for item in self._var_int_computed:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
-                self._symbol_singleton[item] = smp.symbols(item, commutative=False)
+                # self._symbol_singleton[item] = smp.symbols(item, commutative=False)
                 logger.debug(self.__dict__[item])
 
         # _state_int
@@ -331,7 +380,7 @@ class DeviceBase(object):
             for item in self._state_int:
                 self.__dict__[item] = MutableDenseNDimArray(smp.symbols(self.__class__.__name__ +
                                                                         f'_{item}_0:{self.n}'))
-                self._symbol_singleton[item] = smp.symbols(item)
+                # self._symbol_singleton[item] = smp.symbols(item)
                 # TODO: register for a variable number in the DAE system
                 logger.debug(self.__dict__[item])
 
@@ -369,9 +418,11 @@ class DeviceBase(object):
             algeb_symbol_list = self.get_list_of_symbols_from_ext(dev, var_name, int_keys)
             self.__dict__[dest] = smp.Array(algeb_symbol_list)
 
-            # store the singleton  TODO: should be retrieved
+            # store the singleton
+            # TODO: should be retrieved. but the retrieved MatrixSymbol may have a
+            #  different size
             # self._symbol_singleton[dest] = smp.symbols(var_name)
-            self._symbol_singleton[dest] = dev_ref._symbol_singleton[var_name]
+            # self._symbol_singleton[dest] = dev_ref._symbol_singleton[var_name]
             logger.debug(self.__dict__[dest])
 
     def _get_int_of_element(self, dev, fkey):
