@@ -514,9 +514,9 @@ class DeviceBase(object):
         """
         Based on the definition of algebraic variables (defined in `self._algeb_ext` and the associated device,
         retrieve the
-         - variable symbol singleton (goes to self._symbol_singleton[dest])
-         - the variable list for the respective external elements (goes to `self.{dest}` as a sympy.Array)
-         - the variable address in the dae (goes to `self._dae_address[f'{dest'}]`)
+        - variable symbol singleton (goes to self._symbol_singleton[dest])
+        - the variable list for the respective external elements (goes to `self.{dest}` as a sympy.Array)
+        - the variable address in the dae (goes to `self._dae_address[f'{dest'}]`)
 
         Returns
         -------

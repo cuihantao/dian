@@ -12,3 +12,4 @@ dian Documentation
    installation
    usage
    release-history
+   modules
