@@ -8,9 +8,6 @@ from sympy.tensor.array import MutableDenseNDimArray
 from dian.utils import non_commutative_sympify
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-sh = logging.StreamHandler()
-logger.addHandler(sh)
 
 
 class DeviceBase(object):
@@ -122,6 +119,16 @@ class DeviceBase(object):
 
         # dae address for variable and equations
         self._dae_address = OrderedDict()
+
+    def meta_summary(self):
+        """
+        Generate a summary for the metadata of this device class
+
+        Returns
+        -------
+        None
+        """
+        pass
 
     def _init_symbols(self, init_type='symbol'):
         """

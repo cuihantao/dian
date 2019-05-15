@@ -4,6 +4,13 @@ from .devices.line import Line
 from .devices.pvgen import PV
 from .devices.shunt import Shunt
 from .dae import DAE
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+sh = logging.StreamHandler()
+logger.addHandler(sh)
 
 
 class System(object):
@@ -19,6 +26,7 @@ class System(object):
 
     def collect_algeb_int_equations(self):
         """Collect algebraic equations defined for device internals"""
+        logger.debug(f'\n--> Entering collect_algeb_int_equations():')
         for dev in self.devices:
             dev_ref = self.__dict__[dev]
             algeb_int_list = dev_ref._algeb_int
@@ -27,7 +35,7 @@ class System(object):
 
             for variable in algeb_int_list:
                 if variable not in gcall_syms:
-                    print(f'{variable} internal equation not found in device {dev}')
+                    logger.debug(f'{variable} internal equation not found in device {dev}')
                     continue
 
                 dae_addr_var = dae_addr[variable]
@@ -37,6 +45,7 @@ class System(object):
 
     def collect_algeb_ext_equations(self):
         """Collect algebraic equations defined for external variables"""
+        logger.debug(f'\n--> Entering collect_algeb_ext_equations():')
         for dev in self.devices:
             dev_ref = self.__dict__[dev]
             algeb_ext_list = dev_ref._algeb_ext.keys()
@@ -45,7 +54,7 @@ class System(object):
 
             for variable in algeb_ext_list:
                 if variable not in gcall_syms:
-                    print(f'{variable} external equation not found in device {dev}')
+                    logger.debug(f'{variable} external equation not found in device {dev}')
                     continue
 
                 dae_addr_var = dae_addr[variable]
