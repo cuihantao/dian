@@ -13,13 +13,9 @@ logger = logging.getLogger(__name__)
 class DeviceBase(object):
     """
     Base class for devices with universal properties and functions
-
-    # TODO: before sympifying, use self.n to define array symbols
-    # TODO: provide an option to populate default data when the number of devices are given
-
+    """
     #  {Constant, Symbol {scalar, vector {parameter, variable{internal, external}, matrix}, Anything}
 
-    """
     def __init__(self, system):
 
         self.system = system
