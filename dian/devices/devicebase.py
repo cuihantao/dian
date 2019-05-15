@@ -446,8 +446,8 @@ class DeviceBase(object):
         logger.debug(f'Computational parameters: {param_int_computational}')
 
         # create empty lists for non_computational params
-        for item in self._param_int_non_computational:
-            self.__dict__[item] = list()
+        # for item in self._param_int_non_computational:
+        #     self.__dict__[item] = list()
 
         for item in param_int_computational:
             logger.debug(f'param_int_computational: {item}, ')

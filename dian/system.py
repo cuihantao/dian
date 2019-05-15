@@ -1,7 +1,7 @@
 from .devices.bus import Bus
 from .devices.pqload import PQ
 from .devices.line import Line
-from .devices.pvgen import PV
+from .devices.pvgen import PV, Slack
 from .devices.shunt import Shunt
 from .dae import DAE
 import logging
@@ -15,12 +15,13 @@ logger.addHandler(sh)
 
 class System(object):
     def __init__(self):
-        self.devices = ['bus', 'pq', 'line', 'pv', 'shunt']
+        self.devices = ['bus', 'pq', 'line', 'pv', 'slack', 'shunt']
 
         self.bus = Bus(system=self)
         self.pq = PQ(system=self)
         self.line = Line(system=self)
         self.pv = PV(system=self)
+        self.slack = Slack(system=self)
         self.shunt = Shunt(system=self)
         self.dae = DAE(system=self)
 

@@ -30,3 +30,23 @@ class PV(DeviceBase):
                                 })
         self._gcall_ext.update({'a': '-p0',
                                 'v': '-q'})
+
+
+class Slack(PV):
+    """
+    Class for Slack generator for power flow
+    """
+
+    def __init__(self, system):
+        super(Slack, self).__init__(system)
+        self._param_int.remove('p0')
+        self._param_int_default.pop('p0')
+
+        self._param_int.extend(['a0'])
+        self._param_int_default.update({'a0': 0})
+
+        self._algeb_int.extend(['p'])
+
+        self._gcall_int.update({'p': 'a - a0'})
+
+        self._gcall_ext.update({'a': '-p'})

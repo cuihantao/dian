@@ -8,18 +8,6 @@ logger.setLevel(logging.DEBUG)
 
 system = System()
 
-# system.bus.add_element_with_defaults(5)
-# system.pq.add_element_with_defaults(3)
-# system.line.add_element_with_defaults(6)
-# system.pv.add_element_with_defaults(4)
-# system.shunt.add_element_with_defaults(0)
-#
-# system.pq.bus = np.array([1, 2, 3])
-# system.pv.bus = np.array([0, 1, 2, 4])
-#
-# system.line.bus1 = np.array([0, 0, 0, 1, 2, 3])
-# system.line.bus2 = np.array([1, 3, 4, 2, 3, 4])
-
 system.bus.add_element(idx=0, name="Bus 1", Vn=110)
 system.bus.add_element(idx=1, name="Bus 2", Vn=110)
 system.bus.add_element(idx=2, name="Bus 3", Vn=110)
@@ -42,78 +30,100 @@ system.pv.add_element(idx=1, name="PV 2", bus=1, p0=1.7, v0=1)
 system.pv.add_element(idx=2, name="PV 3", bus=2, p0=3.2349, v0=1)
 system.pv.add_element(idx=3, name="PV 5", bus=4, p0=4.6651, v0=1)
 
+system.slack.add_element(idx=0, name="Slack 1", bus=3, v0=1, a0=0)
 
 system.bus.metadata_check()
 system.pq.metadata_check()
 system.line.metadata_check()
 system.pv.metadata_check()
+system.slack.metadata_check()
 
 system.bus._init_symbols()
 system.pq._init_symbols()
 system.line._init_symbols()
 system.pv._init_symbols()
+system.slack._init_symbols()
 
 system.bus._init_data(subs_param_value=True)
 system.pq._init_data(subs_param_value=True)
 system.line._init_data(subs_param_value=True)
 system.pv._init_data(subs_param_value=True)
+system.slack._init_data(subs_param_value=True)
 
 system.bus.get_var_address()
 system.pq.get_var_address()
 system.line.get_var_address()
 system.pv.get_var_address()
+system.slack.get_var_address()
 
 system.bus.get_algeb_ext()
 system.pq.get_algeb_ext()
 system.line.get_algeb_ext()
 system.pv.get_algeb_ext()
+system.slack.get_algeb_ext()
 
 system.bus._init_equation()
 system.pq._init_equation()
 system.line._init_equation()
 system.pv._init_equation()
+system.slack._init_equation()
 
 
 system.bus._compute_param_int()
 system.pq._compute_param_int()
 system.line._compute_param_int()
 system.pv._compute_param_int()
+system.slack._compute_param_int()
 
 system.bus._compute_param_custom()
 system.pq._compute_param_custom()
 system.line._compute_param_custom()
 system.pv._compute_param_custom()
+system.slack._compute_param_custom()
 
 system.bus._compute_variable()
 system.pq._compute_variable()
 system.line._compute_variable()
 system.pv._compute_variable()
+system.slack._compute_variable()
 
 system.bus.make_gcall_int_symbolic()
 system.pq.make_gcall_int_symbolic()
 system.line.make_gcall_int_symbolic()
 system.pv.make_gcall_int_symbolic()
+system.slack.make_gcall_int_symbolic()
 
 system.bus.make_gcall_ext_symbolic()
 system.pq.make_gcall_ext_symbolic()
 system.line.make_gcall_ext_symbolic()
 system.pv.make_gcall_ext_symbolic()
+system.slack.make_gcall_ext_symbolic()
 
 system.bus.create_param_symbol_value_pair()
 system.pq.create_param_symbol_value_pair()
 system.line.create_param_symbol_value_pair()
 system.pv.create_param_symbol_value_pair()
+system.slack.create_param_symbol_value_pair()
 
 system.bus.subs_param_data()
 system.pq.subs_param_data()
 system.line.subs_param_data()
 system.pv.subs_param_data()
+system.slack.subs_param_data()
 
 system.bus.delayed_symbol_sub_all(subs_param_value=True)
 system.pq.delayed_symbol_sub_all(subs_param_value=True)
 system.line.delayed_symbol_sub_all(subs_param_value=True)
 system.pv.delayed_symbol_sub_all(subs_param_value=True)
+system.slack.delayed_symbol_sub_all(subs_param_value=True)
 
 system.dae.initialize_xyfg_empty()
 system.collect_algeb_int_equations()
 system.collect_algeb_ext_equations()
+
+fs = []
+for eq in system.dae.g:
+    fs.extend(eq.free_symbols)
+fs = list(set(fs))
+
+logger.info(f'\nNumber of equations: {len(system.dae.g)}, Number of variables: {len(fs)}')
