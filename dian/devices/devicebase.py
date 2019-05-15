@@ -31,14 +31,18 @@ class DeviceBase(object):
         # options for the whole class
         self._options = OrderedDict()
 
-        # parameter data loaded from data files or data classes
-
+        # parameter data stored in the value of the OrderedDictionary, includes params defined in `_param_int`,
+        # `_param_int_computed`, `_param_int_custom`, `_param_ext`, and `_param_ext_computed`
         self._param_data = OrderedDict()
+
+        # key: parameter name, value: (list of symbols, list of values)
+        self._param_sym_val_pair = OrderedDict()
 
         # default set of parameters
         self._param_int = ['name', 'u']
         self._param_int_default = {'name': '', 'u': 1}
         self._param_int_non_computational = ['name']
+        self._param_int_mandatory = []
 
         # computed internal parameters in a list of (parameter, equation)
         self._param_int_computed = OrderedDict()
@@ -47,10 +51,11 @@ class DeviceBase(object):
         self._param_int_custom = []
 
         # external parameters before any computation in tuples (device, original_name, new_name)
-        self._param_ext = []  # TODO: method to update external parameters
+        self._param_ext = []  # TODO: may change to OrderedDict; method to update external parameters
 
         # external parameters that are computed by the external device in tuples (device, original name, new_name)
-        self._param_ext_computed = []  # TODO: method to update computed external parameters
+        self._param_ext_computed = []
+        # TODO: may change to OrderedDict, method to update computed external parameters
 
         # store the idx to internal index mapping
         self._int = OrderedDict()
@@ -176,6 +181,63 @@ class DeviceBase(object):
         logger.debug(f'--> {self.__class__.__name__}: Initialized symbols: '
                      f'{pprint.pformat(self._symbol_singleton)}')
 
+    def create_param_symbol_value_pair(self):
+        """
+        Create (element parameter symbol, value) pair for each parameter
+
+        Returns
+        -------
+        None
+        """
+        param_names = list(set(self._param_int) - set(self._param_int_non_computational))
+        param_names += self._param_ext_computed
+        param_names += self._param_ext
+        param_names += self._param_ext_computed
+        param_names += self._param_int_custom
+
+        for p in param_names:
+            if p not in self.__dict__:
+                logger.debug(f'Field {p} not exist in {self.__class__.__name__}, check param consistency.')
+                continue
+            if p not in self._param_data:
+                logger.debug(f'Param data for <{p}> does not exist in <{self.__class__.__name__}>.')
+                continue
+            self._param_sym_val_pair[p] = (self.__dict__[p], self._param_data[p])
+
+    def subs_param_data(self):
+        """
+        Substitute parameter symbols for the values provided in `self._param_data`, which may be constructed from
+        DeviceData
+
+        Returns
+        -------
+        None
+        """
+        pass
+
+    def add_element(self, **kwargs):
+        """
+        Add one element to this device
+
+        Parameters
+        ----------
+        kwargs
+
+        Returns
+        -------
+
+        """
+        idx = kwargs.pop('idx', None)
+        if idx is None:
+            idx = self.n
+        self._int.update({idx: self.n})
+        self.idx.append(idx)
+
+        for key, val in kwargs.items():
+            if key not in self._param_data:  # TODO: check if `key` is a valid parameter
+                self._param_data[key] = []  # TODO: consider numpy array instead
+            self._param_data[key].append(val)
+
     def make_gcall_ext_symbolic(self):
         """
         Generate symbolic expressions for algebraic equations, based on `self._gcall_ext`, linked to external
@@ -207,7 +269,7 @@ class DeviceBase(object):
             self._gcall_int_symbolic_singleton[var] = equation_singleton
 
     def delayed_symbol_sub(self, in_dict_name: str, out_dict_name: str, subs_type='vectorized', output_type=None,
-                           update=False):
+                           update=False, use_param_values=False):
         """
         Execute symbolic substitution for a dictionary whose values are symbolic equation singletons
 
@@ -242,11 +304,13 @@ class DeviceBase(object):
                 continue
 
             if subs_type == 'vectorized':
-                self.__dict__[out_dict_name][var] = self._subs_all_vectorized(eq, return_as=output_type)
+                self.__dict__[out_dict_name][var] = \
+                    self._subs_all_vectorized(eq, use_param_values=use_param_values, return_as=output_type)
             elif subs_type == 'singleton':
-                self.__dict__[out_dict_name][var] = self._subs_all_singleton(eq, return_as=output_type)
+                self.__dict__[out_dict_name][var] = \
+                    self._subs_all_singleton(eq, use_param_values=use_param_values, return_as=output_type)
 
-    def delayed_symbol_sub_all(self):
+    def delayed_symbol_sub_all(self, use_param_values=False):
         """
         Delayed substitution for symbols. May need to call `self._subs_all_vectorized` and
         `self._subs_all_singleton` respectively for each devices
@@ -257,11 +321,11 @@ class DeviceBase(object):
 
         """
         self.delayed_symbol_sub(in_dict_name='_gcall_ext_symbolic_singleton', out_dict_name='_gcall_ext_symbolic',
-                                subs_type='vectorized', output_type=smp.Array)
+                                subs_type='vectorized', output_type=smp.Array, use_param_values=use_param_values)
         self.delayed_symbol_sub(in_dict_name='_gcall_int_symbolic_singleton', out_dict_name='_gcall_int_symbolic',
-                                subs_type='vectorized', output_type=smp.Array)
+                                subs_type='vectorized', output_type=smp.Array, use_param_values=use_param_values)
 
-    def _subs_all_vectorized(self, equation_singleton, return_as=list):
+    def _subs_all_vectorized(self, equation_singleton, use_param_values=False, return_as=list):
         """Substitute symbol singletons with element-wise variable names for the provided expression"""
 
         free_syms = equation_singleton.free_symbols
@@ -275,10 +339,23 @@ class DeviceBase(object):
             for symbol in free_syms:
                 sym = str(symbol)
 
-                if len(self.__dict__[sym]) == 0:
-                    logger.debug(f'_subs_all_vectorized(): skips variable {sym} due to empty length')
-                    continue
-                sym_list.append((symbol, self.__dict__[sym][i]))
+                if use_param_values is False:
+                    if len(self.__dict__[sym]) == 0:
+                        logger.debug(f'{self.__class__.__name__}: _subs_all_vectorized(): skips variable {sym} '
+                                     f'due to empty length')
+                        continue
+                    else:
+                        substitute = self.__dict__[sym][i]
+                else:
+                    if sym not in self._param_data:
+                        substitute = self.__dict__[sym][i]
+                    elif len(self._param_data[sym]) == 0:
+                        logger.error(f'{self.__class__.__name__}: _subs_all_vectorized(): '
+                                     f'missing parameter <{sym}> values')
+                        continue
+                    else:
+                        substitute = self._param_data[sym][i]
+                sym_list.append((symbol, substitute))
 
             # BUG: the `subs` below will convert the new substitute to the same type of the old one
             #   E.g., if we are substuting Bus_v_0 (symbol) for v (MatrixSymbol), then Bus_v_0 will be converted
@@ -295,7 +372,7 @@ class DeviceBase(object):
 
         return ret
 
-    def _subs_all_singleton(self, equation_singleton, return_as=None):
+    def _subs_all_singleton(self, equation_singleton, use_param_values=False, return_as=None):
         """Substitute symbol singletons with symbols expression"""
 
         free_syms = equation_singleton.free_symbols
@@ -303,7 +380,11 @@ class DeviceBase(object):
         sym_list = []
         for symbol in free_syms:
             sym = str(symbol)
-            sym_list.append((symbol, self.__dict__[sym]))
+            if use_param_values is False:
+                sym_list.append((symbol, self.__dict__[sym]))
+            else:
+                sym_list.append((symbol, self._param_data[sym]))  # TODO: substituting with a numpy array may
+                # cause issue
 
         # use `simultaneous` subs for matrix substitution
         ret = equation_singleton.subs(sym_list, simultaneous=True)
@@ -496,6 +577,11 @@ class DeviceBase(object):
         assert n >= 0
         self.idx = list(range(n))
         self._int = {i: i for i in self.idx}
+
+        for p in self._param_int:
+            if p in self._param_int_mandatory:
+                continue
+            self._param_data[p] = [self._param_int_default[p]] * n
 
     def _init_equation(self):
         """
@@ -729,4 +815,5 @@ class DeviceData(object):
         None
 
         """
+
         pass

@@ -9,6 +9,16 @@ class PV(DeviceBase):
         super(PV, self).__init__(system)
         self._param_int.extend(['bus', 'p', 'v0', 'Sn', 'Vn', 'vmax', 'vmin', 'qmax', 'qmin'])
         self._param_int_non_computational = ['bus']
+        self._param_int_mandatory.extend(['bus'])
+        self._param_int_default.update({'p': 0,
+                                        'v0': 1,
+                                        'Sn': 100,
+                                        'Vn': 110,
+                                        'vmax': 1.1,
+                                        'vmin': 0.9,
+                                        'qmax': 999,
+                                        'qmin': -999
+                                        })
 
         self._foreign_keys.update({'bus': 'Bus'})
 

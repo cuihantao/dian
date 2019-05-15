@@ -60,6 +60,8 @@ system.pq._compute_param_custom()
 system.line._compute_param_custom()
 system.pv._compute_param_custom()
 
+# TODO: should be able to substitute in parameters at this point
+
 system.bus._compute_variable()
 system.pq._compute_variable()
 system.line._compute_variable()
@@ -75,10 +77,20 @@ system.pq.make_gcall_ext_symbolic()
 system.line.make_gcall_ext_symbolic()
 system.pv.make_gcall_ext_symbolic()
 
-system.bus.delayed_symbol_sub_all()
-system.pq.delayed_symbol_sub_all()
-system.line.delayed_symbol_sub_all()
-system.pv.delayed_symbol_sub_all()
+system.bus.create_param_symbol_value_pair()
+system.pq.create_param_symbol_value_pair()
+system.line.create_param_symbol_value_pair()
+system.pv.create_param_symbol_value_pair()
+
+system.bus.subs_param_data()
+system.pq.subs_param_data()
+system.line.subs_param_data()
+system.pv.subs_param_data()
+
+system.bus.delayed_symbol_sub_all(use_param_values=True)
+system.pq.delayed_symbol_sub_all(use_param_values=True)
+system.line.delayed_symbol_sub_all(use_param_values=True)
+system.pv.delayed_symbol_sub_all(use_param_values=True)
 
 system.dae.initialize_xyfg_empty()
 system.collect_algeb_int_equations()

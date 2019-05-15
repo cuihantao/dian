@@ -15,6 +15,27 @@ class Line(DeviceBase):
                                 'Sn', 'Vn1', 'Vn2', 'fn', 'owner', 'tap', 'phi', 'istf', 'xcoord', 'ycoord'
                                 ])
         self._param_int_non_computational = ['bus1', 'bus2', 'owner', 'xcoord', 'ycoord']
+        self._param_int_mandatory.extend(['bus1', 'bus2'])
+
+        self._param_int_default.update({'owner': 0,
+                                        'r': 1e-4,
+                                        'x': 1e-2,
+                                        'g': 0,
+                                        'b': 0,
+                                        'g1': 0,
+                                        'g2': 0,
+                                        'b1': 0,
+                                        'b2': 0,
+                                        'Sn': 100,
+                                        'Vn1': 110,
+                                        'Vn2': 110,
+                                        'fn': 60,
+                                        'tap': 1,
+                                        'phi': 0,
+                                        'istf': 0,
+                                        'xcoord': 0,
+                                        'ycoord': 0,
+                                        })
 
         self._foreign_keys.update({'bus1': 'Bus', 'bus2': 'Bus'})
 
