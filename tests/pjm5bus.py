@@ -50,6 +50,8 @@ system.pq._init_equation()
 system.line._init_equation()
 system.pv._init_equation()
 
+# substitute parameter values in each of the following steps
+
 system.bus._compute_param_int()
 system.pq._compute_param_int()
 system.line._compute_param_int()
