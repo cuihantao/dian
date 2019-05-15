@@ -16,7 +16,7 @@ class TestInitData(unittest.TestCase):
         self.system.bus.add_element_with_defaults(10)
 
         self.system.pq.add_element_with_defaults(5)
-        self.system.pq.bus = np.array([0, 2, 4, 6, 8])
+        self.system.pq._param_data['bus'] = np.array([0, 2, 4, 6, 8])
 
     def test_init_data(self):
         self.system.bus._init_data()
