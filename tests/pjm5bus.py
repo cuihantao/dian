@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np  # NOQA
 import sympy as smp  # NOQA
 from dian.system import System
 import logging
@@ -8,17 +8,40 @@ logger.setLevel(logging.DEBUG)
 
 system = System()
 
-system.bus.create_n_default_elements(5)
-system.pq.create_n_default_elements(3)
-system.line.create_n_default_elements(6)
-system.pv.create_n_default_elements(4)
-system.shunt.create_n_default_elements(0)
+# system.bus.add_element_with_defaults(5)
+# system.pq.add_element_with_defaults(3)
+# system.line.add_element_with_defaults(6)
+# system.pv.add_element_with_defaults(4)
+# system.shunt.add_element_with_defaults(0)
+#
+# system.pq.bus = np.array([1, 2, 3])
+# system.pv.bus = np.array([0, 1, 2, 4])
+#
+# system.line.bus1 = np.array([0, 0, 0, 1, 2, 3])
+# system.line.bus2 = np.array([1, 3, 4, 2, 3, 4])
 
-system.pq.bus = np.array([1, 2, 3])
-system.pv.bus = np.array([0, 1, 2, 4])
+system.bus.add_element(idx=0, name="Bus 1", Vn=110)
+system.bus.add_element(idx=1, name="Bus 2", Vn=110)
+system.bus.add_element(idx=2, name="Bus 3", Vn=110)
+system.bus.add_element(idx=3, name="Bus 4", Vn=110)
+system.bus.add_element(idx=4, name="Bus 5", Vn=110)
 
-system.line.bus1 = np.array([0, 0, 0, 1, 2, 3])
-system.line.bus2 = np.array([1, 3, 4, 2, 3, 4])
+system.pq.add_element(idx=0, name="PQ 1", bus=1, p=3, q=0.9861)
+system.pq.add_element(idx=1, name="PQ 2", bus=2, p=3, q=0.9861)
+system.pq.add_element(idx=2, name="PQ 3", bus=3, p=4, q=1.3147)
+
+system.line.add_element(idx=0, name="Line 1-2", bus1=0, bus2=1, r=0.00281, x=0.0281, b=0.00712)
+system.line.add_element(idx=1, name="Line 1-4", bus1=0, bus2=3, r=0.00304, x=0.0304, b=0.00658)
+system.line.add_element(idx=2, name="Line 1-5", bus1=0, bus2=4, r=0.00064, x=0.0064, b=0.03126)
+system.line.add_element(idx=3, name="Line 2-3", bus1=1, bus2=2, r=0.00108, x=0.0108, b=0.01852)
+system.line.add_element(idx=4, name="Line 3-4", bus1=2, bus2=3, r=0.00297, x=0.0297, b=0.00674)
+system.line.add_element(idx=5, name="Line 4-5", bus1=3, bus2=4, r=0.00297, x=0.0297, b=0.00674)
+
+system.pv.add_element(idx=0, name="PV 1", bus=0, p0=0.4, v0=1)
+system.pv.add_element(idx=1, name="PV 2", bus=1, p0=1.7, v0=1)
+system.pv.add_element(idx=2, name="PV 3", bus=2, p0=3.2349, v0=1)
+system.pv.add_element(idx=3, name="PV 5", bus=4, p0=4.6651, v0=1)
+
 
 system.bus.metadata_check()
 system.pq.metadata_check()
@@ -50,7 +73,6 @@ system.pq._init_equation()
 system.line._init_equation()
 system.pv._init_equation()
 
-# substitute parameter values in each of the following steps
 
 system.bus._compute_param_int()
 system.pq._compute_param_int()

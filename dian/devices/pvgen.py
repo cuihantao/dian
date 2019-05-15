@@ -7,10 +7,10 @@ class PV(DeviceBase):
 
     def __init__(self, system):
         super(PV, self).__init__(system)
-        self._param_int.extend(['bus', 'p', 'v0', 'Sn', 'Vn', 'vmax', 'vmin', 'qmax', 'qmin'])
+        self._param_int.extend(['bus', 'p0', 'v0', 'Sn', 'Vn', 'vmax', 'vmin', 'qmax', 'qmin'])
         self._param_int_non_computational.extend(['bus'])
         self._param_int_mandatory.extend(['bus'])
-        self._param_int_default.update({'p': 0,
+        self._param_int_default.update({'p0': 0,
                                         'v0': 1,
                                         'Sn': 100,
                                         'Vn': 110,
@@ -28,5 +28,5 @@ class PV(DeviceBase):
 
         self._gcall_int.update({'q': 'v - v0',
                                 })
-        self._gcall_ext.update({'a': '-p',
+        self._gcall_ext.update({'a': '-p0',
                                 'v': '-q'})

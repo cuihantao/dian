@@ -234,13 +234,22 @@ class DeviceBase(object):
         -------
 
         """
+        # process `idx`
         idx = kwargs.pop('idx', None)
         if idx is None:
             idx = self.n
         self._int.update({idx: self.n})
         self.idx.append(idx)
 
-        for key, val in kwargs.items():
+        # grab default values and update with `kwargs`
+        param_vals = OrderedDict(self._param_int_default)
+        param_vals.update(kwargs)
+
+        for man in self._param_int_mandatory:
+            if man not in param_vals.keys():
+                logger.error(f'{self.classname}: mandatory param <{man}> missing.')
+
+        for key, val in param_vals.items():
             if key not in self._param_data:  # TODO: check if `key` is a valid parameter
                 self._param_data[key] = []  # TODO: consider numpy array instead
             self._param_data[key].append(val)
@@ -436,6 +445,10 @@ class DeviceBase(object):
         param_int_computational = (set(self._param_int) - set(self._param_int_non_computational))
         logger.debug(f'Computational parameters: {param_int_computational}')
 
+        # create empty lists for non_computational params
+        for item in self._param_int_non_computational:
+            self.__dict__[item] = list()
+
         for item in param_int_computational:
             logger.debug(f'param_int_computational: {item}, ')
             if subs_param_value is False:
@@ -559,7 +572,9 @@ class DeviceBase(object):
         """
         assert dev in self._foreign_keys.values()
 
-        fkey_values = self.__dict__[fkey]
+        fkey_values = self._param_data[fkey]
+        # the values of `fkey` is stored in `self._param_data` instead of self.__dict__
+
         return self.system.__dict__[dev.lower()].idx2int(fkey_values)
 
     def get_list_of_symbols_from_ext(self, dev, var_name, int_idx):
@@ -596,7 +611,7 @@ class DeviceBase(object):
         """
         return np.array([self._int[i] for i in idx])
 
-    def create_n_default_elements(self, n: int):
+    def add_element_with_defaults(self, n: int):
         """
         Create `n` elements with the default N-to-N mapping between int and idx. The `idx` and `int` are both
         in range(n).

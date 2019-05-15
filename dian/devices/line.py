@@ -57,9 +57,9 @@ class Line(DeviceBase):
                                          'g2sh': 'g2 + 0.5 * g',
                                          'b1sh': 'b1 + 0.5 * b',
                                          'b2sh': 'b2 + 0.5 * b',
-                                         'y1': 'u* (g1 + I*b1)',
-                                         'y2': 'u* (g2 + I*b2)',
-                                         'y12': 'u/ (r + I*x)',
+                                         'y1': 'u * (g1sh + I*b1sh)',
+                                         'y2': 'u * (g2sh + I*b2sh)',
+                                         'y12': 'u / (r + I*x)',
                                          'm': 'tap * exp(I*phi)',
                                          'm2': 'tap ** 2',
                                          'mconj': 'conjugate(m)',
@@ -80,7 +80,11 @@ class Line(DeviceBase):
 
         # pylint: disable=maybe-no-member
         for a1, y1, m2, y12 in zip(a1_addr, self.y1, self.m2, self.y12):
-            dok_y[(a1, a1)] = (y1 + y12) / m2
+            # Need to check if key exist. Otherwise, same multiple `a1` will overwrite the value
+            if (a1, a1) not in dok_y.keys():
+                dok_y[(a1, a1)] = (y1 + y12) / m2
+            else:
+                dok_y[(a1, a1)] = dok_y[(a1, a1)] + ((y1 + y12) / m2)
 
         for a1, a2, y12, mconj in zip(a1_addr, a2_addr, self.y12, self.mconj):
             if (a1, a2) not in dok_y.keys():
@@ -94,9 +98,9 @@ class Line(DeviceBase):
                 dok_y[(a2, a1)] = dok_y[(a2, a1)] - y12 / m
         for a2, y12, y2 in zip(a2_addr, self.y12, self.y2):
             if (a2, a2) not in dok_y.keys():
-                dok_y[(a2, a2)] = y12 / y2
+                dok_y[(a2, a2)] = y12 + y2
             else:
-                dok_y[(a2, a2)] = dok_y[(a2, a2)] + y12 / y2
+                dok_y[(a2, a2)] = dok_y[(a2, a2)] + (y12 + y2)
 
         nbus = self.system.bus.n
 
