@@ -30,10 +30,10 @@ system.pq._init_symbols()
 system.line._init_symbols()
 system.pv._init_symbols()
 
-system.bus._init_data()
-system.pq._init_data()
-system.line._init_data()
-system.pv._init_data()
+system.bus._init_data(subs_param_value=True)
+system.pq._init_data(subs_param_value=True)
+system.line._init_data(subs_param_value=True)
+system.pv._init_data(subs_param_value=True)
 
 system.bus.get_var_address()
 system.pq.get_var_address()
@@ -62,8 +62,6 @@ system.pq._compute_param_custom()
 system.line._compute_param_custom()
 system.pv._compute_param_custom()
 
-# TODO: should be able to substitute in parameters at this point
-
 system.bus._compute_variable()
 system.pq._compute_variable()
 system.line._compute_variable()
@@ -89,10 +87,10 @@ system.pq.subs_param_data()
 system.line.subs_param_data()
 system.pv.subs_param_data()
 
-system.bus.delayed_symbol_sub_all(use_param_values=True)
-system.pq.delayed_symbol_sub_all(use_param_values=True)
-system.line.delayed_symbol_sub_all(use_param_values=True)
-system.pv.delayed_symbol_sub_all(use_param_values=True)
+system.bus.delayed_symbol_sub_all(subs_param_value=True)
+system.pq.delayed_symbol_sub_all(subs_param_value=True)
+system.line.delayed_symbol_sub_all(subs_param_value=True)
+system.pv.delayed_symbol_sub_all(subs_param_value=True)
 
 system.dae.initialize_xyfg_empty()
 system.collect_algeb_int_equations()

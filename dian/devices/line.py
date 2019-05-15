@@ -14,7 +14,7 @@ class Line(DeviceBase):
         self._param_int.extend(['bus1', 'bus2', 'r', 'x', 'g', 'b', 'g1', 'g2', 'b1', 'b2',
                                 'Sn', 'Vn1', 'Vn2', 'fn', 'owner', 'tap', 'phi', 'istf', 'xcoord', 'ycoord'
                                 ])
-        self._param_int_non_computational = ['bus1', 'bus2', 'owner', 'xcoord', 'ycoord']
+        self._param_int_non_computational.extend(['bus1', 'bus2', 'owner', 'xcoord', 'ycoord'])
         self._param_int_mandatory.extend(['bus1', 'bus2'])
 
         self._param_int_default.update({'owner': 0,

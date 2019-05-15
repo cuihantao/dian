@@ -16,7 +16,7 @@ class PQ(DeviceBase):
                                         'vmax': 1.1,
                                         'vmin': 0.9
                                         })
-        self._param_int_non_computational = ['bus']
+        self._param_int_non_computational.extend(['bus'])
 
         self._foreign_keys.update({'bus': 'Bus'})
 

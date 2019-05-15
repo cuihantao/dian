@@ -8,7 +8,7 @@ class Shunt(DeviceBase):
     def __init__(self, system):
         super(Shunt, self).__init__(system)
         self._param_int.extend(['bus', 'Sn', 'Vn', 'g', 'b'])
-        self._param_int_non_computational = ['bus']
+        self._param_int_non_computational.extend(['bus'])
         self._param_int_mandatory.extend(['bus'])
         self._param_int_default.update({'Sn': 100,
                                         'Vn': 110,
