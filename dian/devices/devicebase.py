@@ -1,8 +1,10 @@
-import sympy as smp
+import sympy as smp  # NOQA
 import numpy as np
 import logging
 import pprint
 
+from sympy import symbols, MatrixSymbol  # NOQA
+from sympy import Array, Matrix, sympify  # NOQA
 from collections import OrderedDict
 from sympy.tensor.array import MutableDenseNDimArray
 from dian.utils import non_commutative_sympify
@@ -155,31 +157,31 @@ class DeviceBase(object):
                 if symbol_str in self._symbol_singleton:
                     continue
                 if init_type == 'symbol':
-                    self._symbol_singleton[symbol_str] = smp.symbols(symbol_str)
+                    self._symbol_singleton[symbol_str] = symbols(symbol_str)
                 elif init_type == 'array':
-                    self._symbol_singleton[symbol_str] = smp.MatrixSymbol(symbol_str, self.n, 1)
+                    self._symbol_singleton[symbol_str] = MatrixSymbol(symbol_str, self.n, 1)
 
         for item in meta_dicts:
             for symbol_str in self.__dict__[item].keys():
                 if symbol_str in self._symbol_singleton:
                     continue
                 if init_type == 'symbol':
-                    self._symbol_singleton[symbol_str] = smp.symbols(symbol_str)
+                    self._symbol_singleton[symbol_str] = symbols(symbol_str)
                 elif init_type == 'array':
-                    self._symbol_singleton[symbol_str] = smp.MatrixSymbol(symbol_str, self.n, 1)
+                    self._symbol_singleton[symbol_str] = MatrixSymbol(symbol_str, self.n, 1)
 
         for item in with_types:
             for symbol_str in self.__dict__[item].keys():
                 if symbol_str in self._symbol_singleton:
                     continue
                 if init_type == 'symbol':
-                    self._symbol_singleton[symbol_str] = smp.symbols(symbol_str, commutative=False)
+                    self._symbol_singleton[symbol_str] = symbols(symbol_str, commutative=False)
                 elif init_type == 'array':
                     # TODO: this is to be implemented. The matrix size of the custom variable need to be
                     #  specifiable by the device definition
                     # raise NotImplementedError
                     pass
-                    # self._symbol_singleton[symbol_str] = smp.MatrixSymbol(symbol_str,)
+                    # self._symbol_singleton[symbol_str] = MatrixSymbol(symbol_str,)
 
         logger.debug(f'\n--> {self.__class__.__name__}: Initialized symbols: '
                      f'{pprint.pformat(self._symbol_singleton)}')
@@ -264,7 +266,7 @@ class DeviceBase(object):
             return
         logger.debug(f'\n--> {self.classname} Entering make_gcall_ext_symbolic')
         for var, eq in self._gcall_ext.items():
-            equation_singleton = smp.sympify(eq, locals=self._symbol_singleton)
+            equation_singleton = sympify(eq, locals=self._symbol_singleton)
             self._gcall_ext_symbolic_singleton[var] = equation_singleton
             logger.debug(f'Equation: <{eq}>, symbolic: <{equation_singleton}>')
 
@@ -283,7 +285,7 @@ class DeviceBase(object):
         logger.debug(f'\n--> {self.classname} Entering make_gcall_int_symbolic')
         for var, eq in self._gcall_int.items():
             # convert to equation singleton
-            equation_singleton = smp.sympify(eq, locals=self._symbol_singleton)
+            equation_singleton = sympify(eq, locals=self._symbol_singleton)
             self._gcall_int_symbolic_singleton[var] = equation_singleton
             logger.debug(f'Equation: <{eq}>, symbolic: <{equation_singleton}>')
 
@@ -340,9 +342,9 @@ class DeviceBase(object):
 
         """
         self.delayed_symbol_sub(in_dict_name='_gcall_ext_symbolic_singleton', out_dict_name='_gcall_ext_symbolic',
-                                subs_type='vectorized', output_type=smp.Array, subs_param_value=subs_param_value)
+                                subs_type='vectorized', output_type=Array, subs_param_value=subs_param_value)
         self.delayed_symbol_sub(in_dict_name='_gcall_int_symbolic_singleton', out_dict_name='_gcall_int_symbolic',
-                                subs_type='vectorized', output_type=smp.Array, subs_param_value=subs_param_value)
+                                subs_type='vectorized', output_type=Array, subs_param_value=subs_param_value)
 
     @property
     def classname(self):
@@ -451,9 +453,9 @@ class DeviceBase(object):
                 param_array = self.make_n_symbols(var_name=item, n=self.n)
             else:
                 if hasattr(self._param_data[item], 'tolist'):
-                    param_array = smp.Array(self._param_data[item].tolist())
+                    param_array = Array(self._param_data[item].tolist())
                 else:
-                    param_array = smp.Array(self._param_data[item])
+                    param_array = Array(self._param_data[item])
             self.__dict__[item] = param_array
             logger.debug(f'{self.__dict__[item]}')
 
@@ -476,7 +478,7 @@ class DeviceBase(object):
             logger.debug(f'Creating variable symbols for {item}')
             self.__dict__[item] = self.make_n_symbols(var_name=item, n=self.n)
 
-    def make_n_symbols(self, var_name, n, commutative=True, return_as=smp.Array):
+    def make_n_symbols(self, var_name, n, commutative=True, return_as=Array):
         """
         Make an array of n consecutive symbols for the given variable name. The return symbols has the format
         `classname_varname_idx`
@@ -497,7 +499,7 @@ class DeviceBase(object):
         A array of symbols
         """
         symbol_range_str = f'{self.classname}_{var_name}_0:{n}'
-        return return_as(smp.symbols(symbol_range_str, commutative=commutative))
+        return return_as(symbols(symbol_range_str, commutative=commutative))
 
     @property
     def int_dae_var(self):
@@ -542,12 +544,12 @@ class DeviceBase(object):
 
             # get external algebraic variable symbol array by accessing
             algeb_symbol_list = self.get_list_of_symbols_from_ext(dev, var_name, int_keys)
-            self.__dict__[dest] = smp.Array(algeb_symbol_list)
+            self.__dict__[dest] = Array(algeb_symbol_list)
 
             # store the singleton
             # TODO: should be retrieved. but the retrieved MatrixSymbol may have a
             #  different size
-            # self._symbol_singleton[dest] = smp.symbols(var_name)
+            # self._symbol_singleton[dest] = symbols(var_name)
             # self._symbol_singleton[dest] = dev_ref._symbol_singleton[var_name]
             logger.debug(self.__dict__[dest])
 
@@ -689,7 +691,7 @@ class DeviceBase(object):
             return
         logger.debug(f'\n--> {self.__class__.__name__}: Entering compute_param_int():')
         for var, eq in self._param_int_computed.items():
-            equation_singleton = smp.sympify(eq)
+            equation_singleton = sympify(eq)
             self.__dict__[var] = self._subs_all_vectorized(equation_singleton, subs_param_value=subs_param_value)
             logger.debug(f'variable <{var}>, equation <{eq}>: \n {self.__dict__[var]}')
 
@@ -728,7 +730,7 @@ class DeviceBase(object):
 
             # process compute_type
             if compute_type == 'vectorized':
-                self.__dict__[var] = self._subs_all_vectorized(equation_singleton, return_as=smp.Array)
+                self.__dict__[var] = self._subs_all_vectorized(equation_singleton, return_as=Array)
             elif compute_type == 'singleton':
                 self.__dict__[var] = self._subs_all_singleton(equation_singleton)
             else:
@@ -829,6 +831,16 @@ class DeviceBase(object):
         Returns
         -------
         bool : True if is an algebraic variable. False otherwise.
+        """
+        pass
+
+    def subs_variable_values(self):
+        """
+        Substitute variable symbols for values for evaluation
+
+        Returns
+        -------
+
         """
         pass
 

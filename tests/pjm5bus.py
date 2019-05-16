@@ -121,9 +121,6 @@ system.dae.initialize_xyfg_empty()
 system.collect_algeb_int_equations()
 system.collect_algeb_ext_equations()
 
-fs = []
-for eq in system.dae.g:
-    fs.extend(eq.free_symbols)
-fs = list(set(fs))
-
-logger.info(f'\nNumber of equations: {len(system.dae.g)}, Number of variables: {len(fs)}')
+logger.info(f'\nNumber of equations: {len(system.dae.g)}, Number of variables: {len(system.dae.y)}')
+jac = smp.SparseMatrix(system.dae.g).jacobian(system.dae.y)
+logger.info(jac)

@@ -62,5 +62,13 @@ class System(object):
                 for idx, addr in enumerate(dae_addr_var):
                     self.dae.g[addr] = self.dae.g[addr] + gcall_syms[variable][idx]
 
-    def collect_algeb_variables(self):
+    def collect_algeb_symbols(self):
+        """
+        Collect algebraic variable symbols based on `dae._y`
+
+        Returns
+        -------
+
+        """
         pass
+        # dae = self.dae
