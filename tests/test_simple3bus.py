@@ -1,11 +1,15 @@
 import unittest
 import logging
-
+import os
 
 logger = logging.getLogger()
 logger.setLevel(logging.WARNING)
 
 
-class TestPJM5Bus(unittest.TestCase):
+class TestSimple3Bus(unittest.TestCase):
     def test_simple3bus(self):
-        exec(open("simple3bus.py").read())
+        cwd = os.getcwd()
+        if 'tests' not in cwd:
+            cwd = os.path.join(cwd, 'tests')
+        test_case = os.path.join(cwd, "simple3bus.py")
+        exec(open(test_case).read())
