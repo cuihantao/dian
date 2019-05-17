@@ -3,7 +3,7 @@ import scipy as sp
 
 import sympy as smp  # NOQA
 
-from sympy import lambdify
+from sympy import lambdify, Matrix
 from scipy.optimize import newton_krylov  # NOQA
 
 from typing import Iterable
@@ -124,6 +124,10 @@ class DAE(object):
         """
         return [(x, y) for x, y in zip(self.y, self.y_num.tolist())]
 
+    @property
+    def y_pairs_dict(self):
+        return {x: y for x, y in zip(self.y, self.y_num.tolist())}
+
     def summary(self):
         """
         Print a summary of the this class
@@ -167,3 +171,13 @@ class DAE(object):
         #       Not working: newton, anderson
         #       working: newton_krylov
         return sp.optimize.__dict__[method](self.g_func, self.y_num)
+
+    def make_gy(self):
+        """
+        Generate the Jacobian matrix dg/dy
+
+        Returns
+        -------
+        None
+        """
+        return Matrix(self.g).jacobian(self.y)
