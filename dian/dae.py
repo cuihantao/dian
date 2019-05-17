@@ -136,14 +136,14 @@ class DAE(object):
         -------
 
         """
-        print('\n--> DAE summary:')
-
-        print(f'dae.m = {self.m}, N algeb eqs: {len(self.g)} ' + (u'\u2713' if self.m == len(self.g) else
-                                                                  u'\u2717'))
-        print(f'dae.n = {self.n}, N state eqs: {len(self.f)} ' + (u'\u2713' if self.n == len(self.f) else
-                                                                  u'\u2717'))
-        print(f'dae.y_num = {self.y_num}')
-        print(f'dae.x_num = {self.x_num}')
+        out = ''
+        out += '\n--> DAE summary:'
+        out += f'dae.m = {self.m}, N algeb eqs: {len(self.g)} ' + (u'\u2713' if self.m == len(self.g) else
+                                                                   u'\u2717')
+        out += f'dae.n = {self.n}, N state eqs: {len(self.f)} ' + (u'\u2713' if self.n == len(self.f) else
+                                                                   u'\u2717')
+        out += f'dae.y_num = {self.y_num}'
+        out += f'dae.x_num = {self.x_num}'
 
     def lambdify_algebs(self):
         """Convert algebraic equations in `self.g` to lambdified function calls and store in `self.g_func`.

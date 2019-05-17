@@ -142,11 +142,7 @@ class DeviceBase(object):
         """
         pass
 
-    def _init_var_data(self):
-        """"""
-        pass
-
-    def _init_symbols(self, init_type='symbol'):
+    def init_symbols(self, init_type='symbol'):
         """
         Create symbol singletons in the first place for parameters and variables
 
@@ -204,6 +200,87 @@ class DeviceBase(object):
         logger.debug(f'\n--> {self.__class__.__name__}: Initialized symbols: '
                      f'{pprint.pformat(self._symbol_singleton)}')
 
+    def init_data(self, subs_param_value=False):
+        """
+        Initialize data members based on metadata provided in `__init__()`
+
+        Returns
+        -------
+
+        """
+        # TODO: check for name conflicts
+
+        if self.n == 0:
+            return False
+        logger.debug(f'\n--> {self.classname}: Entering _init_data() with subs_param_value={subs_param_value}')
+        # all computational parameters
+        param_int_computational = (set(self._param_int) - set(self._param_int_non_computational))
+        logger.debug(f'Computational parameters: {param_int_computational}')
+
+        # create empty lists for non_computational params
+        # for item in self._param_int_non_computational:
+        #     self.__dict__[item] = list()
+
+        for item in param_int_computational:
+            logger.debug(f'param_int_computational: {item}, ')
+            if subs_param_value is False:
+                param_array = self._make_n_symbols(var_name=item, n=self.n)
+            else:
+                if hasattr(self._param_data[item], 'tolist'):
+                    param_array = Array(self._param_data[item].tolist())
+                else:
+                    param_array = Array(self._param_data[item])
+            self.__dict__[item] = param_array
+            logger.debug(f'{self.__dict__[item]}')
+
+        # create placeholders for computed internal parameters
+        for item in self._param_int_computed.keys():
+            self.__dict__[item] = self._make_n_symbols(var_name=item, n=self.n)
+            logger.debug(f'param_int_computed placeholders: {item}, {self.__dict__[item]}')
+
+        # internal variabled computed
+        for item in self._var_int_computed:
+            self.__dict__[item] = self._make_n_symbols(var_name=item, n=self.n)
+            logger.debug(f'var_int_computed placeholders: {item}, {self.__dict__[item]}')
+
+        # create placeholder in `self.__dict__` for custom computed parameters
+        for item in self._param_int_custom:
+            self.__dict__[item] = self._make_n_symbols(var_name=item, n=self.n)
+
+        # make symbols for variables with a dae address
+        for item in self.int_dae_var:
+            logger.debug(f'Creating variable symbols for {item}')
+            self.__dict__[item] = self._make_n_symbols(var_name=item, n=self.n)
+
+        # TODO: consider moving outside this function
+        # create empty numpy arrays for `self._var_data`
+        for item in (self._state_int + self._algeb_int):
+            logger.debug(f'Creating numpy storage for variable {item}')
+            self._var_data[item] = np.zeros((self.n, ))
+
+    def init_equation(self):
+        """
+        Create storage arrays for equations. The equation name starts with an underscore `_` followed by the
+        variable name.
+
+        Included equations are defined in `self._algeb_int`, `self._algeb_intf`, and `self._state_int`.
+
+        Returns
+        -------
+        None
+        """
+        # NOTE: this function is not being used.
+
+        algeb_state_list = self._algeb_int + self._algeb_intf + self._state_int
+        if len(algeb_state_list) == 0:
+            return
+        logger.debug(f'\n--> {self.__class__.__name__}: Entering _init_equation()')
+
+        for item in (self._algeb_int + self._algeb_intf + self._state_int):
+            eq_name = f'_{item}'  # equation names starts with "_" and follows with the corresponding var name
+            self.__dict__[eq_name] = MutableDenseNDimArray([0] * self.n)
+            logger.debug(self.__dict__[eq_name])
+
     def create_param_symbol_value_pair(self):
         """
         Create (element parameter symbol, value) pair for each parameter
@@ -226,17 +303,6 @@ class DeviceBase(object):
                 logger.debug(f'Param data for <{p}> does not exist in <{self.__class__.__name__}>.')
                 continue
             self._param_sym_val_pair[p] = (self.__dict__[p], self._param_data[p])
-
-    def subs_param_data(self):
-        """
-        Substitute parameter symbols for the values provided in `self._param_data`, which may be constructed from
-        DeviceData
-
-        Returns
-        -------
-        None
-        """
-        pass
 
     def add_element(self, **kwargs):
         """
@@ -307,6 +373,21 @@ class DeviceBase(object):
             self._gcall_int_symbolic_singleton[var] = equation_singleton
             logger.debug(f'Equation: <{eq}>, symbolic: <{equation_singleton}>')
 
+    def delayed_symbol_sub_all(self, subs_param_value=False):
+        """
+        Delayed substitution for symbols. May need to call `self._subs_all_vectorized` and
+        `self._subs_all_singleton` respectively for each devices
+
+        Returns
+        -------
+        None
+
+        """
+        self.delayed_symbol_sub(in_dict_name='_gcall_ext_symbolic_singleton', out_dict_name='_gcall_ext_symbolic',
+                                subs_type='vectorized', output_type=Array, subs_param_value=subs_param_value)
+        self.delayed_symbol_sub(in_dict_name='_gcall_int_symbolic_singleton', out_dict_name='_gcall_int_symbolic',
+                                subs_type='vectorized', output_type=Array, subs_param_value=subs_param_value)
+
     def delayed_symbol_sub(self, in_dict_name: str, out_dict_name: str, subs_type='vectorized', output_type=None,
                            update=False, subs_param_value=False):
         """
@@ -348,25 +429,6 @@ class DeviceBase(object):
             elif subs_type == 'singleton':
                 self.__dict__[out_dict_name][var] = \
                     self._subs_all_singleton(eq, subs_param_value=subs_param_value, return_as=output_type)
-
-    def delayed_symbol_sub_all(self, subs_param_value=False):
-        """
-        Delayed substitution for symbols. May need to call `self._subs_all_vectorized` and
-        `self._subs_all_singleton` respectively for each devices
-
-        Returns
-        -------
-        None
-
-        """
-        self.delayed_symbol_sub(in_dict_name='_gcall_ext_symbolic_singleton', out_dict_name='_gcall_ext_symbolic',
-                                subs_type='vectorized', output_type=Array, subs_param_value=subs_param_value)
-        self.delayed_symbol_sub(in_dict_name='_gcall_int_symbolic_singleton', out_dict_name='_gcall_int_symbolic',
-                                subs_type='vectorized', output_type=Array, subs_param_value=subs_param_value)
-
-    @property
-    def classname(self):
-        return self.__class__.__name__
 
     def _subs_all_vectorized(self, equation_singleton, subs_param_value=False, return_as=list):
         """Substitute symbol singletons with element-wise variable names for the provided expression"""
@@ -451,65 +513,7 @@ class DeviceBase(object):
             ret = return_as(ret)
         return ret
 
-    def _init_data(self, subs_param_value=False):
-        """
-        Initialize data members based on metadata provided in `__init__()`
-
-        Returns
-        -------
-
-        """
-        # TODO: check for name conflicts
-
-        if self.n == 0:
-            return False
-        logger.debug(f'\n--> {self.classname}: Entering _init_data() with subs_param_value={subs_param_value}')
-        # all computational parameters
-        param_int_computational = (set(self._param_int) - set(self._param_int_non_computational))
-        logger.debug(f'Computational parameters: {param_int_computational}')
-
-        # create empty lists for non_computational params
-        # for item in self._param_int_non_computational:
-        #     self.__dict__[item] = list()
-
-        for item in param_int_computational:
-            logger.debug(f'param_int_computational: {item}, ')
-            if subs_param_value is False:
-                param_array = self.make_n_symbols(var_name=item, n=self.n)
-            else:
-                if hasattr(self._param_data[item], 'tolist'):
-                    param_array = Array(self._param_data[item].tolist())
-                else:
-                    param_array = Array(self._param_data[item])
-            self.__dict__[item] = param_array
-            logger.debug(f'{self.__dict__[item]}')
-
-        # create placeholders for computed internal parameters
-        for item in self._param_int_computed.keys():
-            self.__dict__[item] = self.make_n_symbols(var_name=item, n=self.n)
-            logger.debug(f'param_int_computed placeholders: {item}, {self.__dict__[item]}')
-
-        # internal variabled computed
-        for item in self._var_int_computed:
-            self.__dict__[item] = self.make_n_symbols(var_name=item, n=self.n)
-            logger.debug(f'var_int_computed placeholders: {item}, {self.__dict__[item]}')
-
-        # create placeholder in `self.__dict__` for custom computed parameters
-        for item in self._param_int_custom:
-            self.__dict__[item] = self.make_n_symbols(var_name=item, n=self.n)
-
-        # make symbols for variables with a dae address
-        for item in self.int_dae_var:
-            logger.debug(f'Creating variable symbols for {item}')
-            self.__dict__[item] = self.make_n_symbols(var_name=item, n=self.n)
-
-        # TODO: consider moving outside this function
-        # create empty numpy arrays for `self._var_data`
-        for item in (self._state_int + self._algeb_int):
-            logger.debug(f'Creating numpy storage for variable {item}')
-            self._var_data[item] = np.zeros((self.n, ))
-
-    def make_n_symbols(self, var_name, n, commutative=True, return_as=Array):
+    def _make_n_symbols(self, var_name, n, commutative=True, return_as=Array):
         """
         Make an array of n consecutive symbols for the given variable name. The return symbols has the format
         `classname_varname_idx`
@@ -542,6 +546,22 @@ class DeviceBase(object):
         list : a list of the variable names that are registered in the dae
         """
         return self._algeb_int + self._state_int
+
+    @property
+    def n(self):
+        """
+        The count of elements obtained from len(self._idx)
+
+        Returns
+        -------
+        int
+            The count of elements
+        """
+        return len(self.idx)
+
+    @property
+    def classname(self):
+        return self.__class__.__name__
 
     def get_algeb_ext(self):
         """
@@ -663,26 +683,15 @@ class DeviceBase(object):
                 continue
             self._param_data[p] = [self._param_int_default[p]] * n
 
-    def _init_equation(self):
+    def metadata_check(self):
         """
-        Create storage arrays for equations. The equation name starts with an underscore `_` followed by the
-        variable name.
-
-        Included equations are defined in `self._algeb_int`, `self._algeb_intf`, and `self._state_int`.
+        Check the metadata and find inconsistency. Contains of subroutines for consistency check.
 
         Returns
         -------
         None
         """
-        algeb_state_list = self._algeb_int + self._algeb_intf + self._state_int
-        if len(algeb_state_list) == 0:
-            return
-        logger.debug(f'\n--> {self.__class__.__name__}: Entering _init_equation()')
-
-        for item in (self._algeb_int + self._algeb_intf + self._state_int):
-            eq_name = f'_{item}'  # equation names starts with "_" and follows with the corresponding var name
-            self.__dict__[eq_name] = MutableDenseNDimArray([0] * self.n)
-            logger.debug(self.__dict__[eq_name])
+        self._check_number_of_algeb_equations()
 
     def _check_number_of_algeb_equations(self):
         """
@@ -698,17 +707,7 @@ class DeviceBase(object):
         assert len(self._algeb_int) - len(self._algeb_intf) <= \
             len(self._gcall_int), "{} Too few gcall_int equations".format(self.__class__.__name__)
 
-    def metadata_check(self):
-        """
-        Check the metadata and find inconsistency. Contains of subroutines for consistency check.
-
-        Returns
-        -------
-        None
-        """
-        self._check_number_of_algeb_equations()
-
-    def _compute_param_int(self, subs_param_value=False):
+    def compute_param_int(self, subs_param_value=False):
         """
         Compute internal parameters based on `self._param_int_computed`.
 
@@ -726,7 +725,7 @@ class DeviceBase(object):
             self.__dict__[var] = self._subs_all_vectorized(equation_singleton, subs_param_value=subs_param_value)
             logger.debug(f'variable <{var}>, equation <{eq}>: \n {self.__dict__[var]}')
 
-    def _compute_variable(self):
+    def compute_variable(self):
         """
         Compute internal variable symbols as defined in `self._var_int_computed`. Supports a list of
          - [equation]
@@ -770,7 +769,7 @@ class DeviceBase(object):
             if return_type is not None:
                 self.__dict__[var] = return_type(self.__dict__[var])
 
-    def _compute_variable_custom(self):
+    def compute_variable_custom(self):
         """
         Hook functions to compute custom variables. To be overloaded by devices.
 
@@ -780,7 +779,7 @@ class DeviceBase(object):
         """
         pass
 
-    def _compute_param_custom(self):
+    def compute_param_custom(self):
         """
         Compute custom parameters. To be called at the end of the parameter creation process.
 
@@ -797,18 +796,6 @@ class DeviceBase(object):
 
         """
         pass
-
-    @property
-    def n(self):
-        """
-        The count of elements obtained from len(self._idx)
-
-        Returns
-        -------
-        int
-            The count of elements
-        """
-        return len(self.idx)
 
     def get_var_address(self):
         """

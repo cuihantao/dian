@@ -70,7 +70,7 @@ class Line(DeviceBase):
                                 'v': 'Qd',
                                 })
 
-    def _compute_param_custom(self):
+    def compute_param_custom(self):
         """Compute `self.Y` for lines"""
         # Note: this one assumes `self.a1_int` is the indices of `self.a1` in `bus.a`
 
