@@ -40,6 +40,9 @@ class Bus(DeviceBase):
 
         self._algeb_int.extend(['a', 'v'])
         self._algeb_intf.extend(['a', 'v'])
+
+        self._var_value_initial.update({('self', 'v', 'idx', 'set'): '1'})
+
         self._special_flags.update({'algeb_group_by_element': False})
 
         # TODO: check the number of equations equal the number of n_algeb - n_algeb_intf

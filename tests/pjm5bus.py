@@ -1,10 +1,20 @@
+import logging
+import time
 import numpy as np  # NOQA
 import sympy as smp  # NOQA
+import scipy as sp  # NOQA
+from sympy import lambdify, sympify  # NOQA
+from scipy.optimize import newton_krylov  # NOQA
+
 from dian.system import System
-import logging
+
+# set up printing options for `sympy` and `numpy`
+smp.init_printing()
+np.set_printoptions(suppress=True)
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
+
 
 system = System()
 
@@ -25,12 +35,12 @@ system.line.add_element(idx=3, name="Line 2-3", bus1=1, bus2=2, r=0.00108, x=0.0
 system.line.add_element(idx=4, name="Line 3-4", bus1=2, bus2=3, r=0.00297, x=0.0297, b=0.00674)
 system.line.add_element(idx=5, name="Line 4-5", bus1=3, bus2=4, r=0.00297, x=0.0297, b=0.00674)
 
-system.pv.add_element(idx=0, name="PV 1", bus=0, p0=0.4, v0=1)
-system.pv.add_element(idx=1, name="PV 2", bus=1, p0=1.7, v0=1)
-system.pv.add_element(idx=2, name="PV 3", bus=2, p0=3.2349, v0=1)
-system.pv.add_element(idx=3, name="PV 5", bus=4, p0=4.6651, v0=1)
+system.pv.add_element(idx=0, name="PV 1", bus=0, p0=0.4, v0=1, q0=0.1)
+system.pv.add_element(idx=1, name="PV 2", bus=0, p0=1.7, v0=1, q0=0.2)
+system.pv.add_element(idx=2, name="PV 3", bus=2, p0=3.2349, v0=1, q0=1.94)
+system.pv.add_element(idx=3, name="PV 5", bus=4, p0=4.6651, v0=1, q0=-0.3)
 
-system.slack.add_element(idx=0, name="Slack 1", bus=3, v0=1, a0=0)
+system.slack.add_element(idx=0, name="Slack 1", bus=3, v0=1, a0=0, p0=0.05, q0=1.84)
 
 system.bus.metadata_check()
 system.pq.metadata_check()
@@ -121,6 +131,27 @@ system.dae.initialize_xyfg_empty()
 system.collect_algeb_int_equations()
 system.collect_algeb_ext_equations()
 
-logger.info(f'\nNumber of equations: {len(system.dae.g)}, Number of variables: {len(system.dae.y)}')
-jac = smp.SparseMatrix(system.dae.g).jacobian(system.dae.y)
-logger.info(jac)
+system.bus.compute_and_set_initial_values(subs_param_value=True)
+system.pq.compute_and_set_initial_values(subs_param_value=True)
+system.line.compute_and_set_initial_values(subs_param_value=True)
+system.pv.compute_and_set_initial_values(subs_param_value=True)
+system.slack.compute_and_set_initial_values(subs_param_value=True)
+
+system.collect_initial_values()
+
+system.dae.summary()
+
+# NOTE: there was an issue with incorrect initialization of voltage when there is no PV or Slack connection
+# TODO: probably allow for setting default/fool-proof initial values when defining the variable
+
+t0 = time.time()
+sol = system.dae.solve_algebs(method='newton_krylov')
+te = time.time() - t0
+
+print(f'Elapsed time: {te}s')
+
+print('\n--> Power flow results:')
+print(f'Voltage phases (deg): {np.degrees(sol[0:system.bus.n])}')
+print(f'Voltage magnitudes (pu): {sol[system.bus.n:2*system.bus.n]}')
+print(f'Reactive power for pv, slack (pu): {sol[2*system.bus.n:2*system.bus.n + system.pv.n + system.slack.n]}')
+print(f'Active power for slack (pu): {sol[system.slack.n]}')

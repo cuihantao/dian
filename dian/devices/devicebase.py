@@ -85,6 +85,20 @@ class DeviceBase(object):
         # (model, algeb_name) (UNCOMMON)
         self._state_ext = []
 
+        # initial values of the variables
+        # A dictionary with the key being the tuple of destination (device, var_name, fkey, operation),
+        #   where `device` is the name of the device or `self,
+        #         `var_name` is the variable name
+        #         `fkey` is the foreign key indexing into `idx` of the device
+        #         `operation` is the type of math operation in ('set', 'add')
+        #   and the value being the equation string
+        self._var_value_initial = OrderedDict()
+        self._var_value_initial_symbolic = OrderedDict()
+        self._var_value_initial_numeric = OrderedDict()
+
+        # variable data during iteration
+        self._var_data = OrderedDict()
+
         # define the current status in the work flow
         self._workflow = None
 
@@ -128,17 +142,21 @@ class DeviceBase(object):
         """
         pass
 
+    def _init_var_data(self):
+        """"""
+        pass
+
     def _init_symbols(self, init_type='symbol'):
         """
         Create symbol singletons in the first place for parameters and variables
 
         Dictionaries:
-         - _gcall_int
-         - _fcall_int
-         - _var_int_computed
-         - _var_int_custom
+        - _gcall_int
+        - _fcall_int
+        - _var_int_computed
+        - _var_int_custom
         Lists:
-         - _param_int
+        - _param_int
 
         Returns
         -------
@@ -357,39 +375,46 @@ class DeviceBase(object):
 
         free_syms = equation_singleton.free_symbols
 
-        n_element = min([len(self.__dict__[str(x)]) for x in free_syms])
+        # skip substitution if the `equation_singleton` contains no `free_symbols`. This happens if equation
+        # singleton is a pure numerical value
 
-        ret = [0] * n_element
-        for i in range(n_element):
+        if len(free_syms) == 0:
+            ret = [equation_singleton] * self.n
+        else:
+            n_element = min([len(self.__dict__[str(x)]) for x in free_syms])
 
-            sym_list = []
-            for symbol in free_syms:
-                sym = str(symbol)
+            ret = [0] * n_element
+            for i in range(n_element):
 
-                value_exist = True
-                substitute = None
-                if subs_param_value is True:
-                    # param value does not exist. Fall back to symbols
-                    if (sym not in self._param_data) or len(self._param_data[sym]) == 0:
-                        logger.debug(f'{self.__class__.__name__}: Param data <{sym}> not exist. Using symbols.')
-                        value_exist = False
-                    else:
-                        substitute = self._param_data[sym][i]
+                sym_list = []
+                for symbol in free_syms:
+                    sym = str(symbol)
 
-                if (subs_param_value is False) or (value_exist is False):
-                    if len(self.__dict__[sym]) == 0:
-                        logger.debug(f'{self.__class__.__name__}: symbol <{sym}> not properly initialized.')
-                        raise ValueError
-                    else:
-                        substitute = self.__dict__[sym][i]
+                    value_exist = True
+                    substitute = None
+                    if subs_param_value is True:
+                        # param value does not exist. Fall back to symbols
+                        if (sym not in self._param_data) or len(self._param_data[sym]) == 0:
+                            logger.debug(f'{self.__class__.__name__}: Param data <{sym}> not exist. '
+                                         f'Using symbols.')
+                            value_exist = False
+                        else:
+                            substitute = self._param_data[sym][i]
 
-                sym_list.append((symbol, substitute))
+                    if (subs_param_value is False) or (value_exist is False):
+                        if len(self.__dict__[sym]) == 0:
+                            logger.debug(f'{self.__class__.__name__}: symbol <{sym}> not properly initialized.')
+                            raise ValueError
+                        else:
+                            substitute = self.__dict__[sym][i]
 
-            # TODO:
-            #   Issue with Sympy: the `subs` below will convert the new substitute to the type of the old one
-            #   E.g., if we are substuting Bus_v_0 (symbol) for v (MatrixSymbol), then Bus_v_0 will be converted
-            #   to a MatrixSymbol, which cannot be added to the DAE
-            ret[i] = equation_singleton.subs(sym_list)
+                    sym_list.append((symbol, substitute))
+
+                # TODO:
+                #  Issue with Sympy: the `subs` below will convert the new substitute to the type of the old one
+                #  E.g., if we are substuting Bus_v_0 (symbol) for v (MatrixSymbol), then Bus_v_0 will be converted
+                #  to a MatrixSymbol, which cannot be added to the DAE
+                ret[i] = equation_singleton.subs(sym_list)
 
         # process return type
         if return_as is None:
@@ -478,6 +503,12 @@ class DeviceBase(object):
             logger.debug(f'Creating variable symbols for {item}')
             self.__dict__[item] = self.make_n_symbols(var_name=item, n=self.n)
 
+        # TODO: consider moving outside this function
+        # create empty numpy arrays for `self._var_data`
+        for item in (self._state_int + self._algeb_int):
+            logger.debug(f'Creating numpy storage for variable {item}')
+            self._var_data[item] = np.zeros((self.n, ))
+
     def make_n_symbols(self, var_name, n, commutative=True, return_as=Array):
         """
         Make an array of n consecutive symbols for the given variable name. The return symbols has the format
@@ -561,14 +592,14 @@ class DeviceBase(object):
         ----------
         dev : str
             Name of the device
-        fkey :
+        fkey : np.array
             A list or numpy array as foreign keys indexing into `dev.idx`
 
         Returns
         -------
 
         """
-        assert dev in self._foreign_keys.values()
+        assert dev in self._foreign_keys.values(), f"{self.classname} does not have {fkey} as foreign key"
 
         fkey_values = self._param_data[fkey]
         # the values of `fkey` is stored in `self._param_data` instead of self.__dict__
@@ -843,6 +874,38 @@ class DeviceBase(object):
 
         """
         pass
+
+    def compute_and_set_initial_values(self, subs_param_value=True):
+        """
+        Compute initial values for variables. Store to `self._var_value_initial_numeric`.
+
+        Returns
+        -------
+        None
+        """
+        for keys, eq in self._var_value_initial.items():
+            dev, var_name, fkey, operation = keys
+            equation_singleton = sympify(eq)
+            equation_vec = self._subs_all_vectorized(equation_singleton, subs_param_value=subs_param_value,
+                                                     return_as=list)
+
+            # store numeric values
+            self._var_value_initial_numeric[keys] = equation_vec
+
+            if dev == 'self':
+                dev = self.classname
+            if fkey == 'idx':
+                element_int = list(self._int.keys())
+            else:
+                element_int = self._get_int_of_element(dev=dev, fkey=fkey)
+
+            dev_ref = self.system.__dict__[dev.lower()]
+            if operation == 'set':
+                dev_ref._var_data[var_name][element_int] = equation_vec
+                logger.debug(f'Set initial value for {dev}.{var_name}{element_int} = {equation_vec}')
+            elif operation == 'add':
+                dev_ref._var_data[var_name][element_int] = dev_ref._var_data[var_name][element_int] + equation_vec
+                logger.debug(f'Added initial value for {dev}.{var_name}{element_int} += {equation_vec}')
 
 
 class DeviceData(object):

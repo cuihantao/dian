@@ -1,5 +1,11 @@
 import numpy as np
+import scipy as sp
+
 import sympy as smp  # NOQA
+
+from sympy import lambdify
+from scipy.optimize import newton_krylov  # NOQA
+
 from typing import Iterable
 from collections import OrderedDict
 
@@ -38,6 +44,10 @@ class DAE(object):
         self.fy = []
         self.gx = []
         self.gy = []
+
+        # function calls lambdified from `self.g` and `self.f`
+        self.g_func = None
+        self.f_func = None
 
         self.m = 0
         self.n = 0
@@ -94,11 +104,66 @@ class DAE(object):
         # self.x = [0] * self.n
         self.f = [0] * self.n
 
-        self.x_num = [0] * self.n
-        self.f_num = [0] * self.n
+        self.x_num = np.zeros((self.n, ))
+        self.f_num = np.zeros((self.n, ))
 
         # self.y = [0] * self.m
         self.g = [0] * self.m
 
-        self.y_num = [0] * self.n
-        self.g_num = [0] * self.n
+        self.y_num = np.zeros((self.m, ))
+        self.g_num = np.zeros((self.m, ))
+
+    @property
+    def y_pairs(self):
+        """
+        Return a list of (symbol, numeric value) pairs for algebraic variables
+
+        Returns
+        -------
+
+        """
+        return [(x, y) for x, y in zip(self.y, self.y_num.tolist())]
+
+    def summary(self):
+        """
+        Print a summary of the this class
+
+        Returns
+        -------
+
+        """
+        print('\n--> DAE summary:')
+
+        print(f'dae.m = {self.m}, N algeb eqs: {len(self.g)} ' + (u'\u2713' if self.m == len(self.g) else
+                                                                  u'\u2717'))
+        print(f'dae.n = {self.n}, N state eqs: {len(self.f)} ' + (u'\u2713' if self.n == len(self.f) else
+                                                                  u'\u2717'))
+        print(f'dae.y_num = {self.y_num}')
+        print(f'dae.x_num = {self.x_num}')
+
+    def lambdify_algebs(self):
+        """Convert algebraic equations in `self.g` to lambdified function calls and store in `self.g_func`.
+
+        The lambdified function takes an argument of variable arrays.
+
+        Returns
+        -------
+        None
+        """
+        self.g_func = lambdify((self.y, ), self.g)
+
+    def solve_algebs(self, method='newton_krylov'):
+        """
+        Solve the algebraic equations numerically
+
+        Returns
+        -------
+        None
+        """
+        if self.g_func is None:
+            self.lambdify_algebs()
+
+        # NOTE: not all methods converge.
+        #       Not working: newton, anderson
+        #       working: newton_krylov
+        return sp.optimize.__dict__[method](self.g_func, self.y_num)

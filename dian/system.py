@@ -62,13 +62,24 @@ class System(object):
                 for idx, addr in enumerate(dae_addr_var):
                     self.dae.g[addr] = self.dae.g[addr] + gcall_syms[variable][idx]
 
-    def collect_algeb_symbols(self):
+    def collect_initial_values(self):
         """
-        Collect algebraic variable symbols based on `dae._y`
+        Collect variable initial values to `dae.x` and `dae.y`
 
         Returns
         -------
 
         """
-        pass
-        # dae = self.dae
+        logger.debug('\n--> Entering collect_initial_values():')
+        dae = self.dae
+        for dev in self.devices:
+            dev_ref = self.__dict__[dev]
+            dae_addr = dev_ref._dae_address
+
+            for variable in dev_ref._algeb_int:
+                addr = dae_addr[variable]
+                dae.y_num[addr] = dev_ref._var_data[variable]
+
+            for variable in dev_ref._state_int:
+                addr = dae_addr[variable]
+                dae.x_num[addr] = dev_ref._var_data[variable]

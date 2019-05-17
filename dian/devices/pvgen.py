@@ -25,10 +25,13 @@ class PV(DeviceBase):
 
         self._algeb_ext.update({'a': ['bus', 'a'], 'v': ['bus', 'v']})
 
+        self._var_value_initial.update({('Bus', 'v', 'bus', 'set'): 'v0',
+                                        ('self', 'q', 'idx', 'set'): 'q0',
+                                        })
+
         self._algeb_int.extend(['q'])
 
-        self._gcall_int.update({'q': 'v - v0',
-                                })
+        self._gcall_int.update({'q': 'v - v0 + 1e-5*q'})
         self._gcall_ext.update({'a': '-p0',
                                 'v': '-q'})
 
@@ -45,6 +48,9 @@ class Slack(PV):
 
         self._algeb_int.extend(['p'])
 
-        self._gcall_int.update({'p': 'a - a0'})
+        self._gcall_int.update({'p': 'a - a0 + 1e-5*p'})
 
         self._gcall_ext.update({'a': '-p'})
+
+        self._var_value_initial.update({('Bus', 'a', 'bus', 'set'): 'a0',
+                                        ('self', 'p', 'idx', 'set'): 'p0'})
