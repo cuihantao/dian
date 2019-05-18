@@ -1,0 +1,2 @@
+ignore:
+  - "dian/_version.py"  # ignore folders and all its contents
