@@ -1,6 +1,5 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-.vscode/
 *.py[cod]
 *$py.class
 
@@ -76,6 +75,8 @@ target/
 #pycharm
 .idea/*
 
+#vscode
+.vscode/*
 
 #Ipython Notebook
 .ipynb_checkpoints

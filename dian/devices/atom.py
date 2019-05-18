@@ -80,8 +80,7 @@ class Param(object):
         -------
         None
         """
-        self._values = np.ndarray()
-    pass
+        self._values = np.ndarray([])
 
 
 class Variable(object):
