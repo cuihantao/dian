@@ -32,7 +32,7 @@ class TestDeviceBase(unittest.TestCase):
 
     def test_init_data(self):
         # _init_data for bus and TestDevice
-        self.system.bus._init_data()
-        self.test_device._init_data()
+        self.system.bus.init_data()
+        self.test_device.init_data()
 
         self.assertEqual(self.system.bus.n, 10)

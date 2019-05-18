@@ -19,7 +19,7 @@ class TestInitData(unittest.TestCase):
         self.system.pq._param_data['bus'] = np.array([0, 2, 4, 6, 8])
 
     def test_init_data(self):
-        self.system.bus._init_data()
-        self.system.bus._init_equation()
+        self.system.bus.init_data()
+        self.system.bus.init_equation()
         self.system.bus.get_var_address()
         self.system.pq.get_algeb_ext()

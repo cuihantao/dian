@@ -3,7 +3,7 @@ import scipy as sp
 
 import sympy as smp  # NOQA
 
-from sympy import lambdify
+from sympy import lambdify, Matrix
 from scipy.optimize import newton_krylov  # NOQA
 
 from typing import Iterable
@@ -124,6 +124,10 @@ class DAE(object):
         """
         return [(x, y) for x, y in zip(self.y, self.y_num.tolist())]
 
+    @property
+    def y_pairs_dict(self):
+        return {x: y for x, y in zip(self.y, self.y_num.tolist())}
+
     def summary(self):
         """
         Print a summary of the this class
@@ -132,14 +136,14 @@ class DAE(object):
         -------
 
         """
-        print('\n--> DAE summary:')
-
-        print(f'dae.m = {self.m}, N algeb eqs: {len(self.g)} ' + (u'\u2713' if self.m == len(self.g) else
-                                                                  u'\u2717'))
-        print(f'dae.n = {self.n}, N state eqs: {len(self.f)} ' + (u'\u2713' if self.n == len(self.f) else
-                                                                  u'\u2717'))
-        print(f'dae.y_num = {self.y_num}')
-        print(f'dae.x_num = {self.x_num}')
+        out = ''
+        out += '\n--> DAE summary:'
+        out += f'dae.m = {self.m}, N algeb eqs: {len(self.g)} ' + (u'\u2713' if self.m == len(self.g) else
+                                                                   u'\u2717')
+        out += f'dae.n = {self.n}, N state eqs: {len(self.f)} ' + (u'\u2713' if self.n == len(self.f) else
+                                                                   u'\u2717')
+        out += f'dae.y_num = {self.y_num}'
+        out += f'dae.x_num = {self.x_num}'
 
     def lambdify_algebs(self):
         """Convert algebraic equations in `self.g` to lambdified function calls and store in `self.g_func`.
@@ -167,3 +171,13 @@ class DAE(object):
         #       Not working: newton, anderson
         #       working: newton_krylov
         return sp.optimize.__dict__[method](self.g_func, self.y_num)
+
+    def make_gy(self):
+        """
+        Generate the Jacobian matrix dg/dy
+
+        Returns
+        -------
+        None
+        """
+        return Matrix(self.g).jacobian(self.y)
