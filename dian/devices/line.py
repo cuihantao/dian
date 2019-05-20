@@ -64,7 +64,7 @@ class Line(DeviceBase):
                                          'm2': 'tap ** 2',
                                          'mconj': 'conjugate(m)',
                                          })
-        self._param_int_custom.extend(['Y'])
+        self._param_int_custom.update({'Y': 'Matrix'})
 
         self._gcall_ext.update({'a': 'Pd',
                                 'v': 'Qd',

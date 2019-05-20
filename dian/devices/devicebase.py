@@ -43,7 +43,7 @@ class DeviceBase(object):
         self._param_int_computed = OrderedDict()
 
         # internal parameters that are computed with custom functions
-        self._param_int_custom = []
+        self._param_int_custom = OrderedDict()
 
         # external parameters before any computation in tuples (device, original_name, new_name)
         self._param_ext = []  # TODO: may change to OrderedDict; method to update external parameters
@@ -71,6 +71,7 @@ class DeviceBase(object):
 
         # computed algebraic variables using either internal or external algebs
         self._var_int_computed = OrderedDict()
+        self._var_int_computed_symbolic_singleton = OrderedDict()
 
         # internal custom computed variables
         self._var_int_custom = OrderedDict()
@@ -383,6 +384,11 @@ class DeviceBase(object):
         None
 
         """
+        for key, val in self._param_int_custom.items():
+            equation = self.__dict__[key]
+            self.__dict__[key] = self._subs_all_singleton(equation, subs_param_value=subs_param_value)
+
+        self.compute_variable(operation='subs', subs_param_value=True)
         self.delayed_symbol_sub(in_dict_name='_gcall_ext_symbolic_singleton', out_dict_name='_gcall_ext_symbolic',
                                 subs_type='vectorized', output_type=Array, subs_param_value=subs_param_value)
         self.delayed_symbol_sub(in_dict_name='_gcall_int_symbolic_singleton', out_dict_name='_gcall_int_symbolic',
@@ -443,7 +449,9 @@ class DeviceBase(object):
         if len(free_syms) == 0:
             ret = [equation_singleton] * self.n
         else:
-            n_element = min([len(self.__dict__[str(x)]) for x in free_syms])
+            lens = [len(self.__dict__[str(x)]) for x in free_syms]
+
+            n_element = min(lens)
 
             ret = [0] * n_element
             for i in range(n_element):
@@ -456,6 +464,8 @@ class DeviceBase(object):
                     substitute = None
                     if subs_param_value is True:
                         # param value does not exist. Fall back to symbols
+                        if sym not in self.parameters:
+                            value_exist = False
                         if (sym not in self._param_data) or len(self._param_data[sym]) == 0:
                             logger.debug(f'{self.__class__.__name__}: Param data <{sym}> not exist. '
                                          f'Using symbols.')
@@ -464,7 +474,7 @@ class DeviceBase(object):
                             substitute = self._param_data[sym][i]
 
                     if (subs_param_value is False) or (value_exist is False):
-                        if len(self.__dict__[sym]) == 0:
+                        if hasattr(self.__dict__[sym], '__len__') and (len(self.__dict__[sym]) == 0):
                             logger.debug(f'{self.__class__.__name__}: symbol <{sym}> not properly initialized.')
                             raise ValueError
                         else:
@@ -497,10 +507,22 @@ class DeviceBase(object):
         sym_list = []
         for symbol in free_syms:
             sym = str(symbol)
+
+            # TODO: rewrite the logic below
             if subs_param_value is False:
                 sym_list.append((symbol, self.__dict__[sym]))
             else:
-                sym_list.append((symbol, self._param_data[sym]))  # TODO: substituting with a numpy array may
+                if sym not in self._param_data:
+                    if '_' in sym:
+                        dev, var_name, idx_int = sym.split('_')
+                        dev_name = dev.lower()
+                        idx_int = int(idx_int)
+                        sym_list.append((symbol, self.system.__dict__[dev_name]._param_data[var_name][idx_int]))
+                    else:
+                        logger.debug(f'Param data for <{sym}> does not exist. Fall back to symbolic subs.')
+                        sym_list.append((symbol, self.__dict__[sym]))
+                else:
+                    sym_list.append((symbol, self._param_data[sym]))  # TODO: substituting with a numpy array may
                 # cause issue
 
         # use `simultaneous` subs for matrix substitution
@@ -562,6 +584,17 @@ class DeviceBase(object):
     @property
     def classname(self):
         return self.__class__.__name__
+
+    @property
+    def parameters(self):
+        """Return all parameters"""
+        out = []
+        out += self._param_int
+        out += list(self._param_int_computed.keys())
+        out += list(self._param_int_custom)
+        out += list(self._param_ext)
+        out += list(self._param_ext_computed)
+        return out
 
     def get_algeb_ext(self):
         """
@@ -725,18 +758,25 @@ class DeviceBase(object):
             self.__dict__[var] = self._subs_all_vectorized(equation_singleton, subs_param_value=subs_param_value)
             logger.debug(f'variable <{var}>, equation <{eq}>: \n {self.__dict__[var]}')
 
-    def compute_variable(self):
+    def compute_variable(self, operation='sympify', subs_param_value=False):
         """
         Compute internal variable symbols as defined in `self._var_int_computed`. Supports a list of
          - [equation]
          - [equation, compute_type]
          - [equation, compute_type, return_type]
 
+        Parameters
+        ----------
+        operation : str
+            The type of operation in (`sympify`, `subs` or `both`)
+
         Returns
         -------
         None
 
         """
+        assert operation in ('sympify', 'subs', 'both')
+
         if len(self._var_int_computed) == 0:
             return
 
@@ -756,13 +796,19 @@ class DeviceBase(object):
             else:
                 raise NotImplementedError
 
+            # sympify part
             equation_singleton = non_commutative_sympify(eq)
+            self._var_int_computed_symbolic_singleton[var] = equation_singleton
 
             # process compute_type
+            equation_singleton = self._var_int_computed_symbolic_singleton[var]
             if compute_type == 'vectorized':
-                self.__dict__[var] = self._subs_all_vectorized(equation_singleton, return_as=Array)
+                self.__dict__[var] = self._subs_all_vectorized(equation_singleton,
+                                                               subs_param_value=subs_param_value,
+                                                               return_as=Array)
             elif compute_type == 'singleton':
-                self.__dict__[var] = self._subs_all_singleton(equation_singleton)
+                self.__dict__[var] = self._subs_all_singleton(equation_singleton,
+                                                              subs_param_value=subs_param_value)
             else:
                 raise NotImplementedError
 
