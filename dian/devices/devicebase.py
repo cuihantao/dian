@@ -44,6 +44,7 @@ class DeviceBase(object):
 
         # internal parameters that are computed with custom functions
         self._param_int_custom = OrderedDict()
+        self._param_int_custom_symbolic = OrderedDict()
 
         # external parameters before any computation in tuples (device, original_name, new_name)
         self._param_ext = []  # TODO: may change to OrderedDict; method to update external parameters
@@ -386,6 +387,7 @@ class DeviceBase(object):
         """
         for key, val in self._param_int_custom.items():
             equation = self.__dict__[key]
+            self._param_int_custom_symbolic[key] = equation
             self.__dict__[key] = self._subs_all_singleton(equation, subs_param_value=subs_param_value)
 
         self.compute_variable(operation='subs', subs_param_value=True)
