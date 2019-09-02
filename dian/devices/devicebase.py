@@ -1,12 +1,13 @@
-import sympy as smp  # NOQA
 import numpy as np
 import logging
 import pprint
-
-from sympy import symbols, MatrixSymbol  # NOQA
-from sympy import Array, Matrix, sympify  # NOQA
 from collections import OrderedDict
+
+import numpy as np  # NOQA
+from sympy import Array, sympify  # NOQA
+from sympy import symbols, MatrixSymbol  # NOQA
 from sympy.tensor.array import MutableDenseNDimArray
+
 from dian.utils import non_commutative_sympify
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ class DeviceBase(object):
     """
     Base class for devices with universal properties and functions
     """
+
     #  {Constant, Symbol {scalar, vector {parameter, variable{internal, external}, matrix}, Anything}
 
     def __init__(self, system):
@@ -258,7 +260,7 @@ class DeviceBase(object):
         # create empty numpy arrays for `self._var_data`
         for item in (self._state_int + self._algeb_int):
             logger.debug(f'Creating numpy storage for variable {item}')
-            self._var_data[item] = np.zeros((self.n, ))
+            self._var_data[item] = np.zeros((self.n,))
 
     def init_equation(self):
         """
@@ -432,11 +434,11 @@ class DeviceBase(object):
                 continue
 
             if subs_type == 'vectorized':
-                self.__dict__[out_dict_name][var] = \
-                    self._subs_all_vectorized(eq, subs_param_value=subs_param_value, return_as=output_type)
+                out = self._subs_all_vectorized(eq, subs_param_value=subs_param_value, return_as=output_type)
+                self.__dict__[out_dict_name][var] = out
             elif subs_type == 'singleton':
-                self.__dict__[out_dict_name][var] = \
-                    self._subs_all_singleton(eq, subs_param_value=subs_param_value, return_as=output_type)
+                out = self._subs_all_singleton(eq, subs_param_value=subs_param_value, return_as=output_type)
+                self.__dict__[out_dict_name][var] = out
 
     def _subs_all_vectorized(self, equation_singleton, subs_param_value=False, return_as=list):
         """Substitute symbol singletons with element-wise variable names for the provided expression"""
@@ -945,10 +947,11 @@ class DeviceBase(object):
 
 class DeviceData(object):
     """Class for storing device data"""
+
     def __init__(self, device: str, param: list, n_element=0):
         self.device = device  # name of the device to which the data belongs
         for item in param:
-            self.__dict__[item] = np.ndarray((n_element, ))
+            self.__dict__[item] = np.ndarray((n_element,))
 
     def load_param_by_row(self, **kwargs):
         """

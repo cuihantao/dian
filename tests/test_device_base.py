@@ -4,18 +4,12 @@ from dian.system import System
 from dian.devices.devicebase import DeviceBase
 
 
-class TestDevice(DeviceBase):
-    """Test class for DeviceBase"""
-    def __init__(self, system):
-        super(TestDevice, self).__init__(system=system)
-
-
 class TestDeviceBase(unittest.TestCase):
     def setUp(self) -> None:
         self.system = System()
 
         # instantiate TestDevice
-        self.system.testdevice = TestDevice(self.system)
+        self.system.testdevice = DeviceBase(self.system)
         self.test_device = self.system.testdevice
 
         # create buses
